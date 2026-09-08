@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "dgSpecHash": "A1WxdPI+uEE=",
+  "success": true,
+  "projectFilePath": "/Users/moura/Desktop/kanbada/tools/Kanbada.LoadData/Kanbada.LoadData.csproj",
+  "expectedPackageFiles": [
+    "/Users/moura/.nuget/packages/microsoft.aspnetcore.authentication.google/10.0.11/microsoft.aspnetcore.authentication.google.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.aspnetcore.authentication.microsoftaccount/10.0.11/microsoft.aspnetcore.authentication.microsoftaccount.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.aspnetcore.openapi/10.0.11/microsoft.aspnetcore.openapi.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.entityframeworkcore/10.0.11/microsoft.entityframeworkcore.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.entityframeworkcore.abstractions/10.0.11/microsoft.entityframeworkcore.abstractions.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.entityframeworkcore.analyzers/10.0.11/microsoft.entityframeworkcore.analyzers.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.entityframeworkcore.relational/10.0.11/microsoft.entityframeworkcore.relational.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.caching.abstractions/10.0.11/microsoft.extensions.caching.abstractions.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.caching.memory/10.0.11/microsoft.extensions.caching.memory.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.configuration.abstractions/10.0.11/microsoft.extensions.configuration.abstractions.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.dependencyinjection/10.0.11/microsoft.extensions.dependencyinjection.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/10.0.11/microsoft.extensions.dependencyinjection.abstractions.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.logging/10.0.11/microsoft.extensions.logging.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.logging.abstractions/10.0.11/microsoft.extensions.logging.abstractions.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.options/10.0.11/microsoft.extensions.options.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.extensions.primitives/10.0.11/microsoft.extensions.primitives.10.0.11.nupkg.sha512",
+    "/Users/moura/.nuget/packages/microsoft.openapi/2.7.5/microsoft.openapi.2.7.5.nupkg.sha512",
+    "/Users/moura/.nuget/packages/npgsql/10.0.3/npgsql.10.0.3.nupkg.sha512",
+    "/Users/moura/.nuget/packages/npgsql.entityframeworkcore.postgresql/10.0.3/npgsql.entityframeworkcore.postgresql.10.0.3.nupkg.sha512",
+    "/Users/moura/.nuget/packages/scalar.aspnetcore/2.17.3/scalar.aspnetcore.2.17.3.nupkg.sha512"
+  ],
+  "logs": []
+}

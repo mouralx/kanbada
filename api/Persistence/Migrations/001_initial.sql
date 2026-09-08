@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS schema_versions(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
+        CREATE TABLE IF NOT EXISTS users(id uuid PRIMARY KEY,email text NOT NULL,name text NOT NULL,password_hash text,created_at timestamptz NOT NULL DEFAULT now());
+        CREATE UNIQUE INDEX IF NOT EXISTS users_password_email ON users(lower(email)) WHERE password_hash IS NOT NULL;
+        CREATE TABLE IF NOT EXISTS identities(provider text NOT NULL,subject text NOT NULL,user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,PRIMARY KEY(provider,subject));
+        CREATE TABLE IF NOT EXISTS sessions(id text PRIMARY KEY,user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires_at timestamptz NOT NULL);
+        CREATE TABLE IF NOT EXISTS workspaces(id uuid PRIMARY KEY,owner_id uuid NOT NULL REFERENCES users(id),personal boolean NOT NULL DEFAULT false,state jsonb NOT NULL,version bigint NOT NULL DEFAULT 1,updated_at timestamptz NOT NULL DEFAULT now());
+        CREATE UNIQUE INDEX IF NOT EXISTS workspace_personal_owner ON workspaces(owner_id) WHERE personal;
+        CREATE TABLE IF NOT EXISTS members(workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,email text NOT NULL,user_id uuid REFERENCES users(id),invite_token text,PRIMARY KEY(workspace_id,email));
+        CREATE INDEX IF NOT EXISTS members_user ON members(user_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS members_invite ON members(invite_token) WHERE invite_token IS NOT NULL;
+        CREATE TABLE IF NOT EXISTS files(id uuid PRIMARY KEY,workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,uploader_id uuid NOT NULL REFERENCES users(id),name text NOT NULL,content_type text NOT NULL,bytes bytea NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+        CREATE TABLE IF NOT EXISTS shares(token text PRIMARY KEY,workspace_id uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,card_id text NOT NULL,creator_id uuid NOT NULL REFERENCES users(id),access text NOT NULL CHECK(access IN ('signed-in','members')),expires_at timestamptz,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(workspace_id,card_id));
+        INSERT INTO schema_versions(version) VALUES(1) ON CONFLICT DO NOTHING;

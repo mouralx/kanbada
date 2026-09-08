@@ -1,0 +1,47 @@
+using Microsoft.AspNetCore.Authentication;
+using System.Security.Claims;
+
+namespace Kanbada.Api;
+
+public static class AuthenticationEndpoints
+{
+    public static void Map(WebApplication app, Dictionary<string, bool> providers)
+    {
+        var api = app.MapGroup("").WithTags("Authentication");
+        api.MapGet("/api/auth/session", (HttpContext ctx) => Results.Ok(new { user = ctx.User.Identity?.IsAuthenticated == true ? new { id = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), name = ctx.User.FindFirstValue(ClaimTypes.Name), email = ctx.User.FindFirstValue(ClaimTypes.Email), provider = "email" } : null, providers }));
+        api.MapPost("/api/auth/register", async (Credentials input, Auth auth, HttpContext ctx) =>
+        {
+            var user = await auth.Register(input);
+            await auth.Session(ctx, user);
+            return Results.Ok(new { id = user });
+        }).RequireRateLimiting("auth");
+        api.MapPost("/api/auth/login", async (Credentials input, Auth auth, HttpContext ctx) =>
+        {
+            await auth.Session(ctx, await auth.Login(input));
+            return Results.NoContent();
+        }).RequireRateLimiting("auth");
+        api.MapPost("/api/auth/logout", async (Auth auth, HttpContext ctx) =>
+        {
+            await auth.Logout(ctx);
+            return Results.NoContent();
+        });
+        api.MapGet("/api/auth/{provider}/start", (string provider, string? returnUrl) =>
+        {
+            if (!providers.GetValueOrDefault(provider))
+                throw new ApiError(503, "This sign-in provider has not been configured.");
+            var safe = returnUrl?.StartsWith('/') == true && !returnUrl.StartsWith("//") && !returnUrl.Contains('\\') ? returnUrl : "/";
+            return Results.Challenge(new AuthenticationProperties { RedirectUri = "/api/auth/complete?provider=" + provider + "&returnUrl=" + Uri.EscapeDataString(safe) }, new[] { provider });
+        }).RequireRateLimiting("auth");
+        api.MapGet("/api/auth/complete", async (string provider, string? returnUrl, HttpContext ctx, Auth auth) =>
+        {
+            if (!providers.GetValueOrDefault(provider))
+                throw new ApiError(400, "Unknown provider.");
+            var external = await ctx.AuthenticateAsync("external");
+            if (!external.Succeeded || external.Principal is null)
+                throw new ApiError(401, "Sign-in failed.");
+            await auth.Session(ctx, await auth.External(provider, external.Principal));
+            await ctx.SignOutAsync("external");
+            return Results.Redirect(returnUrl?.StartsWith('/') == true && !returnUrl.StartsWith("//") && !returnUrl.Contains('\\') ? returnUrl : "/");
+        });
+    }
+}

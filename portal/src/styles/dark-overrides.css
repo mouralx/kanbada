@@ -1,0 +1,100 @@
+:root[data-theme='dark'] {
+  --chart-rest: #34475e;
+}
+:root[data-theme='dark'] .logo-symbol i,
+:root[data-theme='dark'] .dashboard-live > i {
+  background: #9ab9df;
+}
+:root[data-theme='dark'] .priority.high,
+:root[data-theme='dark'] .overdue {
+  color: #e5a192;
+}
+:root[data-theme='dark'] .priority.medium {
+  color: #d7bc80;
+}
+:root[data-theme='dark'] .priority.low {
+  color: #a0c2b4;
+}
+:root[data-theme='dark'] .due-chart-bar,
+:root[data-theme='dark'] .due-legend > span:first-child i {
+  background: #58789d;
+}
+:root[data-theme='dark'] .due-chart-bar > i,
+:root[data-theme='dark'] .due-legend > span:nth-child(2) i {
+  background: #a3bcdb;
+}
+/* Neutral surfaces with restrained blue accents. */
+:root[data-theme='dark'] {
+  background: #17191c;
+  color: #e5e5e7;
+  --chart-rest: #393c43;
+}
+:root[data-theme='dark'] body,
+:root[data-theme='dark'] .app,
+:root[data-theme='dark'] .app main {
+  background: #17191c;
+}
+:root[data-theme='dark'] .sidebar {
+  background: #1d1f23;
+  border-right: 1px solid #2e3036;
+}
+:root[data-theme='dark'] .topbar {
+  background: #1b1d21;
+  border-color: #303238;
+}
+:root[data-theme='dark'] .project-banner {
+  background: #272a30;
+  border-color: #3a3d45;
+}
+:root[data-theme='dark'] .banner-progress {
+  background: #22252b;
+  border-color: #41454e;
+}
+:root[data-theme='dark'] .kanban-column {
+  background: #1d1f23;
+  border-color: #34373d;
+}
+:root[data-theme='dark'] .task-card,
+:root[data-theme='dark'] .dashboard-panel,
+:root[data-theme='dark'] .kpi-card,
+:root[data-theme='dark'] .modal,
+:root[data-theme='dark'] .card-modal {
+  background: #25272c;
+  border-color: #3b3e45;
+}
+:root[data-theme='dark'] .task-card:hover {
+  border-color: #727b8b;
+  box-shadow: 0 5px 18px #00000024;
+}
+:root[data-theme='dark'] .auth-story {
+  background: #22252b;
+}
+:root[data-theme='dark'] .auth-page,
+:root[data-theme='dark'] .auth-content {
+  background: #191b1f;
+}
+:root[data-theme='dark'] .sidebar nav button.active,
+:root[data-theme='dark'] .project-nav button.selected {
+  background: #303944;
+  color: #e3e8ef;
+}
+:root[data-theme='dark'] .primary,
+:root[data-theme='dark'] .auth-submit {
+  background: #879db8;
+  color: #171e27;
+}
+:root[data-theme='dark'] .destructive {
+  background: #a65d5d;
+  color: #fff;
+}
+:root[data-theme='dark'] .art-star {
+  color: #a6b1c0;
+}
+:root[data-theme='dark'] .art-dot,
+:root[data-theme='dark'] .art-ring {
+  background: #748295;
+  border-color: #9ba6b5;
+}
+:root[data-theme='dark'] .orbit {
+  border-color: #535a65;
+}

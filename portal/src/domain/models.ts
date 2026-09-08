@@ -1,0 +1,63 @@
+export type Attachment = { id: string; name: string; size: number; type: string; addedAt: string };
+export type Status = string;
+export type Definition = { id: string; name: string; color: string; complete: boolean };
+export type HistoryEntry = { id: string; at: string; actor: string; changes: string[] };
+export type Task = {
+  id: string;
+  project: string;
+  title: string;
+  description: string;
+  status: Status;
+  priority: string;
+  labels: string[];
+  assignees: string[];
+  due: string;
+  comments: string[];
+  checklist: { text: string; done: boolean }[];
+  cover?: string;
+  bucket?: string;
+  swimlane?: string;
+  history?: HistoryEntry[];
+  attachments?: Attachment[];
+};
+export type Member = {
+  userId?: string;
+  invitationToken?: string;
+  name: string;
+  initials: string;
+  color: string;
+  email: string;
+  photo?: string;
+};
+export type Project = {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+  archived?: boolean;
+  system?: 'activities';
+};
+export type Workspace = {
+  ownerId?: string;
+  canManage?: boolean;
+  personal?: boolean;
+  id: string;
+  name: string;
+  icon?: string;
+  banner?: string;
+  bannerPosition?: number;
+};
+export type Notification = { id: string; message: string; at: string };
+export type State = {
+  version?: number;
+  notifications: Notification[];
+  workspace: Workspace;
+  tasks: Task[];
+  projects: Project[];
+  members: Member[];
+  activity: string[];
+  statuses: Definition[];
+  buckets: Definition[];
+  labels: Definition[];
+  swimlanes: (Definition & { project: string })[];
+};
