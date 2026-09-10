@@ -3,6 +3,7 @@ using System;
 using Kanbada.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Kanbada.Api.Persistence.Migrations
 {
     [DbContext(typeof(KanbadaDbContext))]
-    partial class KanbadaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910202057_EnforceTwoFactorForAllAccounts")]
+    partial class EnforceTwoFactorForAllAccounts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -744,14 +747,6 @@ namespace Kanbada.Api.Persistence.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
-
-                    b.Property<string>("Photo")
-                        .HasColumnType("text")
-                        .HasColumnName("photo");
-
-                    b.Property<bool>("PhotoRequired")
-                        .HasColumnType("boolean")
-                        .HasColumnName("photo_required");
 
                     b.Property<int>("TwoFactorFailedAttempts")
                         .HasColumnType("integer")

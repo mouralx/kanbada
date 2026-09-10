@@ -26,6 +26,7 @@ public static class InvitationEndpoints
                 throw new ApiError(409, "You are already a member.");
             var workspace = await db.Workspaces.SingleAsync(x => x.Id == member.WorkspaceId);
             member.UserId = user;
+            member.Photo = await db.Users.Where(x => x.Id == user).Select(x => x.Photo).SingleAsync();
             member.InviteToken = null;
             workspace.Version++;
             workspace.UpdatedAt = DateTimeOffset.UtcNow;

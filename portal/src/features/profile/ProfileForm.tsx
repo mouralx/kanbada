@@ -10,7 +10,7 @@ export function ProfileForm({
   onSave,
 }: {
   member: Member;
-  onSave: (name: string, email: string, photo?: string) => Promise<void>;
+  onSave: (name: string, photo?: string) => Promise<void>;
 }) {
   const { t } = useI18n();
   const [photo, setPhoto] = useState(member.photo);
@@ -51,7 +51,7 @@ export function ProfileForm({
     }
   }
   return (
-    <>
+    <div className={`profile-layout ${apiEnabled ? 'profile-layout-security' : ''}`}>
       <form
         className="simple-form"
         onSubmit={async (e) => {
@@ -60,7 +60,7 @@ export function ProfileForm({
           const form = new FormData(e.currentTarget);
           setBusy(true);
           try {
-            await onSave(String(form.get('name')).trim(), String(form.get('email')).trim(), photo);
+            await onSave(String(form.get('name')).trim(), photo);
           } finally {
             setBusy(false);
           }
@@ -79,6 +79,11 @@ export function ProfileForm({
             </span>
           </div>
           <div>
+            <p>
+              {t(
+                'Put a face to your name — a photo helps your team recognise you and feel closer.',
+              )}
+            </p>
             <button
               type="button"
               className="secondary photo-select"
@@ -89,7 +94,7 @@ export function ProfileForm({
               {busy ? t('Loading\u2026') : t('Change photo')}
             </button>
             <p>{t('JPG, PNG, WebP or GIF \u00B7 up to 2 MB')}</p>
-            {photo && (
+            {photo && !apiEnabled && (
               <button
                 type="button"
                 className="text-button danger"
@@ -124,11 +129,15 @@ export function ProfileForm({
           <input
             name="email"
             type="email"
-            readOnly={apiEnabled}
+            readOnly
+            aria-describedby="profile-email-help"
             defaultValue={member.email}
             required
           />
         </label>
+        <p id="profile-email-help">
+          {t('Your email address cannot be changed after registration.')}
+        </p>
         <button className="primary" disabled={busy}>
           <Check size={15} />
           {t('Save profile')}
@@ -138,6 +147,6 @@ export function ProfileForm({
         </div>
       </form>
       {apiEnabled && <TwoFactorSettings />}
-    </>
+    </div>
   );
 }

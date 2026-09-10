@@ -28,8 +28,8 @@ public sealed class SessionEvents(KanbadaDbContext db) : CookieAuthenticationEve
         }
 
         var user = profile.User;
-        var pending = user.TwoFactorSecret == null ? user.TwoFactorRequired : !profile.TwoFactorVerified;
-        context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim(ClaimTypes.Email, user.Email), new Claim(ClaimTypes.Name, user.Name), new Claim("sid", sid), new Claim("two_factor_pending", pending ? "true" : "false"), new Claim("two_factor_setup", user.TwoFactorSecret == null ? "true" : "false") }, "session")));
+        var pending = user.TwoFactorSecret == null || !profile.TwoFactorVerified;
+        context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim(ClaimTypes.Email, user.Email), new Claim(ClaimTypes.Name, user.Name), new Claim("sid", sid), new Claim("avatar_pending", user.PhotoRequired && user.Photo == null ? "true" : "false"), new Claim("two_factor_pending", pending ? "true" : "false"), new Claim("two_factor_setup", user.TwoFactorSecret == null ? "true" : "false") }, "session")));
     }
 
     public override Task RedirectToLogin(RedirectContext<CookieAuthenticationOptions> context)

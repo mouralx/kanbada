@@ -6,7 +6,7 @@
 :root[data-theme="dark"] button:focus-visible,:root[data-theme="dark"] a:focus-visible {
     outline: 2px solid #686d78
 }
-:root[data-theme="dark"] input:focus,:root[data-theme="dark"] textarea:focus,:root[data-theme="dark"] select:focus {
+:root[data-theme="dark"] input:focus:not(.task-title-input),:root[data-theme="dark"] textarea:focus,:root[data-theme="dark"] select:focus {
     outline: 2px solid #686d78
 }
 :root[data-theme="dark"] .sidebar {
@@ -1344,6 +1344,21 @@
 }
 :root[data-theme="dark"] .enrollment-card h1 {
     color: #e5e5e7
+}
+:root[data-theme="dark"] .change-password {
+    border-top: 1px solid #383b42
+}
+@media (min-width: 761px) {
+    :root[data-theme="dark"] .profile-layout-security > .two-factor-settings {
+        border-left: 1px solid #383b42
+    }
+}
+:root[data-theme="dark"] .avatar-choice {
+    border: 2px solid #383b42
+}
+:root[data-theme="dark"] .avatar-choice[aria-pressed='true'] {
+    border-color: #686d78;
+    background: #1b1d21
 }
 :root[data-theme="dark"]{--line:#383b42;--muted:#a6a8ae;--green:#9aacbf;color-scheme:dark}
 :root[data-theme="dark"] .avatar{color:#26384e}

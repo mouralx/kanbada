@@ -38,14 +38,15 @@ An authenticated caller without access normally receives 404 for workspace/file 
 Authentication:
 
 - `GET /auth/session`: current user or null, configured provider flags, and `twoFactorSetupRequired` / `twoFactorVerificationRequired` flags for restricted sessions.
-- `POST /auth/register`: `{ "email": "...", "password": "...", "name": "..." }`; creates a personal workspace and a restricted setup session. Returns `twoFactorSetupRequired: true`; workspace access returns 403 until authenticator enrollment is confirmed. New external-provider identities follow the same requirement.
-- `POST /auth/login`: email/password and optional `code`; returns 204 with a session on success. If 2FA is enabled and code is omitted, returns 200 `{ "twoFactorRequired": true }` without a session. Resubmit the credentials with an authenticator or recovery code. Invalid/replayed codes return 400; account lockout returns 429.
+- `POST /auth/register`: `{ "email": "...", "password": "...", "name": "..." }`; creates a personal workspace and a restricted setup session. Returns `avatarRequired: true` and `twoFactorSetupRequired: true`; workspace access returns 403 until a photo is saved and authenticator enrollment is confirmed. New external-provider identities follow the same requirement.
+- `POST /auth/login`: email/password plus `code` for enrolled accounts; returns 204 with a verified session on success. Unenrolled accounts receive only a restricted setup session. If an enrolled account omits code, returns 200 `{ "twoFactorRequired": true }` without a session. Resubmit the credentials with an authenticator or recovery code. Invalid/replayed codes return 400; account lockout returns 429.
 - `GET /auth/two-factor`: authenticated status (`available`, `enabled`, `recoveryCodesRemaining`, `required`, `passwordRequired`).
 - `POST /auth/two-factor/setup`: authenticated `{ "password": "..." }`; returns a private `secret` and `uri` for enrollment, valid for ten minutes.
 - `POST /auth/two-factor/confirm`: authenticated `{ "password": "...", "code": "..." }`; enables protection and returns `{ "codes": [...] }` once.
 - `POST /auth/two-factor/recovery-codes`: same authenticated payload; replaces all recovery codes and returns the new set once.
 - `POST /auth/two-factor/verify`: authenticated `{ "password": "", "code": "..." }`; upgrades the current restricted provider session after authenticator/recovery-code verification (204).
-- `POST /auth/two-factor/disable`: same authenticated payload; disables protection for legacy optional accounts (204); mandatory accounts receive 403. Confirm, regenerate, and disable revoke other sessions.
+- `POST /auth/two-factor/disable`: always returns 403; 2FA is mandatory for all accounts.
+- `POST /auth/change-password`: authenticated `{ "password": "...", "newPassword": "...", "code": "..." }`; requires the current password and an unused authenticator or recovery code. New passwords must be 12–200 characters. Returns 204 and revokes other sessions. External accounts must change passwords with their provider.
 - `POST /auth/logout`: revokes the session and clears the cookie.
 - `GET /auth/{provider}/start?returnUrl=/...`: starts Google/Microsoft sign-in.
 - `GET /auth/complete`: application callback after external middleware authentication.
@@ -117,3 +118,5 @@ The supported operations are `add`, `remove`, and `replace`, with JSON Pointer p
 The response is `{ "version": 2, "changes": [...] }`, relative to the original loaded state. It includes changed fields and generated history, not unrelated cards, old history, or images. Apply it in order to a clone of that original state. Scalar documents this endpoint and has an executable example. The portal no longer calls the full-state PUT endpoint.
 
 Workspace GET supports `If-None-Match: "2"`: after authorization, a matching version returns 304 and no body. The portal caches snapshots separately for each account/workspace and uses that cached snapshot only on an authenticated 304. HTTP caching is disabled with `private, no-store`; the application manages its explicit memory cache. A changed version still returns the full workspace, and initial loading remains a full snapshot.
+
+Registration avatars: `GET /auth/avatar/gravatar` returns `{ "photo": "data:..." }` or `{ "photo": null }` for the signed-in account email. `POST /auth/avatar` accepts `{ "photo": "data:image/png;base64,..." }` or `{ "useGravatar": true }` and returns 204. Both require a session, including restricted registration sessions. Images must be PNG, JPEG, GIF or WebP, up to 2 MB. Gravatar is optional; selecting it stores a snapshot. Session responses include `avatarRequired`.

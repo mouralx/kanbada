@@ -13,8 +13,16 @@ export function authenticatorCode(secret, timestamp = Date.now()) {
   return String((digest.readUInt32BE(digest[19] & 15) & 0x7fffffff) % 1000000).padStart(6, '0');
 }
 
+export const avatarPhoto =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAO0lEQVR4AezXwQkAMAgDwOIw3bV7dS8dwacgF8g/3C9x38/JxhmOAQQIECBAgAABAgQIECBAYL9Ad74LAAD//6p1CZ0AAAAGSURBVAMAUaROge/nJygAAAAASUVORK5CYII=';
+
 export async function enrollApiAccount(request, password) {
   const headers = { 'X-Kanbada-Request': '1' };
+  const avatar = await request.post('http://localhost:4173/api/auth/avatar', {
+    headers,
+    data: { photo: avatarPhoto },
+  });
+  assert.equal(avatar.status(), 204);
   const setup = await request.post('http://localhost:4173/api/auth/two-factor/setup', {
     headers,
     data: { password },

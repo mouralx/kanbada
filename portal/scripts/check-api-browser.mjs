@@ -1,4 +1,4 @@
-import { authenticatorCode, enrollApiAccount } from './authenticator-test-helpers.mjs';
+import { authenticatorCode, enrollApiAccount, avatarPhoto } from './authenticator-test-helpers.mjs';
 import { chromium, expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 const browser = await chromium.launch();
@@ -22,15 +22,22 @@ try {
   await page.getByLabel('Email address').fill(`browser-${Date.now()}@example.test`);
   await page.getByLabel('Password', { exact: true }).fill('A-long-browser-test-password');
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Choose your profile photo' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
+  await page.getByLabel('Upload photo').setInputFiles({
+    name: 'avatar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(avatarPhoto.split(',')[1], 'base64'),
+  });
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Secure your account', exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Enable two-factor authentication', exact: true }).click();
   await page.getByLabel('Current password', { exact: true }).fill('A-long-browser-test-password');
   await page.getByRole('button', { name: 'Set up authenticator', exact: true }).click();
   const secret = await page.getByLabel('Setup key', { exact: true }).inputValue();
   await page.getByLabel('Authenticator code', { exact: true }).fill(authenticatorCode(secret));
-  await page.getByRole('button', { name: 'Verify and enable', exact: true }).click();
+  await page.getByRole('button', { name: 'Confirm authenticator', exact: true }).click();
   await page.getByRole('button', { name: 'I have saved my codes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'My activities', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Help', exact: true }).click();

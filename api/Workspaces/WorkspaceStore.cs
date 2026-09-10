@@ -36,7 +36,9 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
             throw new ApiError(409, "A workspace with that name already exists.");
         var id = Guid.NewGuid();
         db.Workspaces.Add(new WorkspaceEntity { Id = id, OwnerId = user, Personal = personal, Version = 1, UpdatedAt = DateTimeOffset.UtcNow });
-        mapper.Apply(id, Initial.State(personal ? "studio" : id.ToString(), personal ? "My Workspace" : name, user, profile.Name, profile.Email, personal));
+        var initial = Initial.State(personal ? "studio" : id.ToString(), personal ? "My Workspace" : name, user, profile.Name, profile.Email, personal);
+        initial["members"]![0]!["photo"] = profile.Photo;
+        mapper.Apply(id, initial);
         await db.SaveChangesAsync();
         return id;
     }
@@ -99,6 +101,13 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
         }
 
         var self = nextMembers.FirstOrDefault(member => WorkspaceJson.Text(member, "userId") == user.ToString());
+        if (self is not null)
+        {
+            var account = await db.Users.SingleAsync(x => x.Id == user);
+            var photo = self["photo"]?.GetValue<string>();
+            if (account.PhotoRequired || !string.IsNullOrEmpty(photo)) AccountAvatar.Validate(photo);
+            account.Photo = photo;
+        }
         if (self is not null && WorkspaceJson.Text(self, "name") != WorkspaceJson.Text(actor, "name"))
         {
             var profile = await db.Users.SingleAsync(x => x.Id == user);

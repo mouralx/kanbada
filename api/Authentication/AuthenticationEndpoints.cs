@@ -8,17 +8,17 @@ public static class AuthenticationEndpoints
     public static void Map(WebApplication app, Dictionary<string, bool> providers)
     {
         var api = app.MapGroup("").WithTags("Authentication");
-        api.MapGet("/api/auth/session", (HttpContext ctx) => Results.Ok(new { user = ctx.User.Identity?.IsAuthenticated == true ? new { id = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), name = ctx.User.FindFirstValue(ClaimTypes.Name), email = ctx.User.FindFirstValue(ClaimTypes.Email), provider = "email" } : null, providers, twoFactorSetupRequired = ctx.User.HasClaim("two_factor_pending", "true") && ctx.User.HasClaim("two_factor_setup", "true"), twoFactorVerificationRequired = ctx.User.HasClaim("two_factor_pending", "true") && !ctx.User.HasClaim("two_factor_setup", "true") }));
+        api.MapGet("/api/auth/session", (HttpContext ctx) => Results.Ok(new { user = ctx.User.Identity?.IsAuthenticated == true ? new { id = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), name = ctx.User.FindFirstValue(ClaimTypes.Name), email = ctx.User.FindFirstValue(ClaimTypes.Email), provider = "email" } : null, providers, avatarRequired = ctx.User.HasClaim("avatar_pending", "true"), twoFactorSetupRequired = ctx.User.HasClaim("two_factor_pending", "true") && ctx.User.HasClaim("two_factor_setup", "true"), twoFactorVerificationRequired = ctx.User.HasClaim("two_factor_pending", "true") && !ctx.User.HasClaim("two_factor_setup", "true") }));
         api.MapPost("/api/auth/register", async (Credentials input, Auth auth, HttpContext ctx) =>
         {
             var user = await auth.Register(input);
             await auth.Session(ctx, user);
-            return Results.Ok(new { id = user, twoFactorSetupRequired = true });
+            return Results.Ok(new { id = user, avatarRequired = true, twoFactorSetupRequired = true });
         }).RequireRateLimiting("auth");
         api.MapPost("/api/auth/login", async (Credentials input, Auth auth, TwoFactor twoFactor, HttpContext ctx) =>
         {
             var user = await auth.Login(input);
-            if (!await twoFactor.Login(user, input.Code, () => auth.Session(ctx, user, twoFactorVerified: true)))
+            if (!await twoFactor.Login(user, input.Password, input.Code, () => auth.Session(ctx, user, twoFactorVerified: true)))
                 return Results.Ok(new { twoFactorRequired = true });
             return Results.NoContent();
         }).RequireRateLimiting("auth");
@@ -36,11 +36,21 @@ public static class AuthenticationEndpoints
             await factor.VerifySession(Auth.User(ctx), input.Code, ctx.User.FindFirstValue("sid"));
             return Results.NoContent();
         });
-        security.MapPost("/disable", async (TwoFactorInput input, TwoFactor factor, HttpContext ctx) =>
+        security.MapPost("/disable", () => Results.Problem(statusCode: 403,
+            detail: "Two-factor authentication is required for this account and cannot be disabled."));
+        api.MapPost("/api/auth/change-password", async (ChangePasswordInput input, TwoFactor factor, HttpContext ctx) =>
         {
-            await factor.Disable(Auth.User(ctx), input, ctx.User.FindFirstValue("sid"));
+            await factor.ChangePassword(Auth.User(ctx), input, ctx.User.FindFirstValue("sid"));
             return Results.NoContent();
-        });
+        }).RequireAuthorization().RequireRateLimiting("auth");
+        api.MapGet("/api/auth/avatar/gravatar", async (AccountAvatar avatar, HttpContext ctx, CancellationToken ct) =>
+            Results.Ok(new { photo = await avatar.Gravatar(Auth.User(ctx), ct) }))
+            .RequireAuthorization().RequireRateLimiting("auth");
+        api.MapPost("/api/auth/avatar", async (AvatarInput input, AccountAvatar avatar, HttpContext ctx, CancellationToken ct) =>
+        {
+            await avatar.Save(Auth.User(ctx), input, ct);
+            return Results.NoContent();
+        }).RequireAuthorization().RequireRateLimiting("auth");
         api.MapPost("/api/auth/logout", async (Auth auth, HttpContext ctx) =>
         {
             await auth.Logout(ctx);

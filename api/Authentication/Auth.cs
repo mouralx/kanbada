@@ -34,7 +34,7 @@ public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces)
         await using var tx = await db.Database.BeginTransactionAsync();
         try
         {
-            db.Users.Add(new UserEntity { Id = id, Email = email, Name = name, PasswordHash = hash, TwoFactorRequired = true });
+            db.Users.Add(new UserEntity { Id = id, Email = email, Name = name, PasswordHash = hash, PhotoRequired = true });
             await db.SaveChangesAsync();
             await workspaces.Create(id, "My Workspace", true);
             await tx.CommitAsync();
@@ -80,7 +80,7 @@ public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces)
         if (existing is not null) return existing.UserId;
         await using var tx = await db.Database.BeginTransactionAsync();
         var id = Guid.NewGuid();
-        db.Users.Add(new UserEntity { Id = id, Email = email.ToLowerInvariant(), Name = name, TwoFactorRequired = true });
+        db.Users.Add(new UserEntity { Id = id, Email = email.ToLowerInvariant(), Name = name, PhotoRequired = true });
         db.Identities.Add(new IdentityEntity { Provider = provider, Subject = subject, UserId = id });
         await db.SaveChangesAsync();
         await workspaces.Create(id, "My Workspace", true);

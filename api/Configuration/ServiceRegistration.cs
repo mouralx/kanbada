@@ -44,6 +44,9 @@ public static class ServiceRegistration
         builder.Services.AddScoped<CardService>();
         builder.Services.AddScoped<Auth>();
         builder.Services.AddScoped<TwoFactor>();
+        builder.Services.AddScoped<AccountAvatar>();
+        builder.Services.AddHttpClient("gravatar", client => client.Timeout = TimeSpan.FromSeconds(8))
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<ApiExceptionHandler>();

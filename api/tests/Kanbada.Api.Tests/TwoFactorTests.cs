@@ -43,18 +43,14 @@ public sealed class TwoFactorTests : IAsyncLifetime
         Assert.True(response.IsSuccessStatusCode, $"{response.StatusCode}: {text}");
         return JsonNode.Parse(text)!;
     }
-    private async Task<(HttpClient Client, string Email, Guid Id)> Register(bool legacy = false)
+    private async Task<(HttpClient Client, string Email, Guid Id)> Register()
     {
         var client = Client();
         var email = Guid.NewGuid() + "@example.test";
         var result = await Json(await client.PostAsJsonAsync("/api/auth/register", new { email, password = Password, name = "MFA Test" }));
         var id = Guid.Parse(result["id"]!.ToString());
-        if (legacy)
-        {
-            using var scope = factory.Services.CreateScope();
-            await scope.ServiceProvider.GetRequiredService<KanbadaDbContext>().Users.Where(x => x.Id == id)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.TwoFactorRequired, false));
-        }
+        using var scope = factory.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<AccountAvatar>().Save(id, new AvatarInput(AvatarTests.Photo), default);
         return (client, email, id);
     }
     private async Task<string> Setup(HttpClient client) => (await Json(await client.PostAsJsonAsync("/api/auth/two-factor/setup", new { password = Password })))["secret"]!.ToString();
@@ -153,21 +149,20 @@ public sealed class TwoFactorTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RecoveryReplacementAndDisableRequireBothFactors_AndRevokeOldCodes()
+    public async Task RecoveryReplacementRequiresBothFactors_AndRevokesOldCodes()
     {
-        var (client, email, _) = await Register(legacy: true);
+        var (client, email, _) = await Register();
         var secret = await Setup(client);
         var codes = await Enable(client, secret);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/two-factor/disable", new { password = "wrong", code = codes[0] })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/two-factor/disable", new { password = Password })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/two-factor/recovery-codes", new { password = "wrong", code = codes[0] })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/two-factor/recovery-codes", new { password = Password })).StatusCode);
         var replacement = await Json(await client.PostAsJsonAsync("/api/auth/two-factor/recovery-codes", new { password = Password, code = codes[0] }));
         using var login = Client();
         Assert.Equal(HttpStatusCode.BadRequest, (await login.PostAsJsonAsync("/api/auth/login", new { email, password = Password, code = codes[1] })).StatusCode);
-        var fresh = replacement["codes"]![0]!.ToString();
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/two-factor/disable", new { password = Password, code = fresh })).StatusCode);
-        Assert.False((await Json(await client.GetAsync("/api/auth/two-factor")))["enabled"]!.GetValue<bool>());
-        Assert.Equal(HttpStatusCode.NoContent, (await login.PostAsJsonAsync("/api/auth/login", new { email, password = Password })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/auth/two-factor/disable", new { password = Password, code = replacement["codes"]![0]!.ToString() })).StatusCode);
+        Assert.True((await Json(await client.GetAsync("/api/auth/two-factor")))["enabled"]!.GetValue<bool>());
     }
+
     [Fact]
     public async Task NewRegistrationCannotAccessWorkspaceUntilEnrollment_OrDisableRequiredProtection()
     {
@@ -198,6 +193,7 @@ public sealed class TwoFactorTests : IAsyncLifetime
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, "external@example.test")
         }, "external"));
         var id = await auth.External("microsoft", identity);
+        await scope.ServiceProvider.GetRequiredService<AccountAvatar>().Save(id, new AvatarInput(AvatarTests.Photo), default);
         async Task<HttpClient> ProviderSession()
         {
             using var sessionScope = factory.Services.CreateScope();
@@ -221,6 +217,43 @@ public sealed class TwoFactorTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, (await returning.PostAsJsonAsync("/api/auth/two-factor/verify", new { password = "", code = "invalid" })).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await returning.PostAsJsonAsync("/api/auth/two-factor/verify", new { password = "", code = codes[0] })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await returning.GetAsync("/api/workspaces")).StatusCode);
+    }
+
+    [Fact]
+    public async Task PasswordChangeRequiresBothFactors_RevokesOtherSessions_AndRejectsOldPassword()
+    {
+        const string nextPassword = "Changed-Horse-Test-Password";
+        var (client, email, _) = await Register();
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/auth/change-password", new { password = Password, newPassword = nextPassword, code = "123456" })).StatusCode);
+        var secret = await Setup(client);
+        var codes = await Enable(client, secret);
+        using var other = Client();
+        Assert.Equal(HttpStatusCode.NoContent, (await other.PostAsJsonAsync("/api/auth/login", new { email, password = Password, code = codes[0] })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/change-password", new { password = "wrong", newPassword = nextPassword, code = codes[1] })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/change-password", new { password = Password, newPassword = nextPassword })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/change-password", new { password = Password, newPassword = "short", code = codes[1] })).StatusCode);
+        clock.Now = clock.Now.AddSeconds(30);
+        var code = Code(secret);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/change-password", new { password = Password, newPassword = nextPassword, code })).StatusCode);
+        Assert.Null((await Json(await other.GetAsync("/api/auth/session")))["user"]);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/workspaces")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/change-password", new { password = nextPassword, newPassword = Password, code })).StatusCode);
+        using var login = Client();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await login.PostAsJsonAsync("/api/auth/login", new { email, password = Password, code = codes[1] })).StatusCode);
+        Assert.True((await Json(await login.PostAsJsonAsync("/api/auth/login", new { email, password = nextPassword })))["twoFactorRequired"]!.GetValue<bool>());
+        Assert.Equal(HttpStatusCode.NoContent, (await login.PostAsJsonAsync("/api/auth/login", new { email, password = nextPassword, code = codes[1] })).StatusCode);
+    }
+
+    [Fact]
+    public async Task RecoveryCodePasswordChangeConsumesTheCodeExactlyOnce()
+    {
+        const string nextPassword = "Changed-Horse-Test-Password";
+        var (client, email, _) = await Register();
+        var codes = await Enable(client, await Setup(client));
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/change-password", new { password = Password, newPassword = nextPassword, code = codes[0] })).StatusCode);
+        using var login = Client();
+        Assert.Equal(HttpStatusCode.BadRequest, (await login.PostAsJsonAsync("/api/auth/login", new { email, password = nextPassword, code = codes[0] })).StatusCode);
+        Assert.Equal(9, (await Json(await client.GetAsync("/api/auth/two-factor")))["recoveryCodesRemaining"]!.GetValue<int>());
     }
 
 }

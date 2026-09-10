@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 
 namespace Kanbada.Api;
 
+public record ChangePasswordInput(string Password, string NewPassword, string? Code = null);
 public record TwoFactorInput(string Password, string? Code = null);
 public record TwoFactorStatus(bool Available, bool Enabled, int RecoveryCodesRemaining, bool Required, bool PasswordRequired);
 public record TwoFactorSetup(string Secret, string Uri);
@@ -20,7 +21,7 @@ public sealed class TwoFactor(KanbadaDbContext db, IDataProtectionProvider prote
     {
         var user = await db.Users.AsNoTracking().SingleAsync(x => x.Id == id);
         return new(true, user.TwoFactorSecret != null,
-            await db.RecoveryCodes.CountAsync(x => x.UserId == id), user.TwoFactorRequired, user.PasswordHash != null);
+            await db.RecoveryCodes.CountAsync(x => x.UserId == id), true, user.PasswordHash != null);
     }
 
     // The no-op UPDATE acquires a PostgreSQL row lock before reading authentication state.
@@ -94,8 +95,9 @@ public sealed class TwoFactor(KanbadaDbContext db, IDataProtectionProvider prote
         user.TwoFactorLockedUntil = null;
     }
 
-    public Task<bool> Login(Guid id, string? code, Func<Task> issueSession) => WithUser(id, async user =>
+    public Task<bool> Login(Guid id, string password, string? code, Func<Task> issueSession) => WithUser(id, async user =>
     {
+        Password(user, password); // Recheck under the lock in case the password changed during login.
         if (user.TwoFactorSecret != null)
         {
             if (string.IsNullOrWhiteSpace(code)) return false;
@@ -135,18 +137,17 @@ public sealed class TwoFactor(KanbadaDbContext db, IDataProtectionProvider prote
         return await ReplaceRecoveryCodes(id);
     });
 
-    public Task<bool> Disable(Guid id, TwoFactorInput input, string? session) => WithUser(id, async user =>
+    public Task<bool> ChangePassword(Guid id, ChangePasswordInput input, string? session) => WithUser(id, async user =>
     {
-        if (user.TwoFactorRequired) throw new ApiError(403, "Two-factor authentication is required for this account and cannot be disabled.");
+        if (user.PasswordHash == null)
+            throw new ApiError(400, "Change your password with your Google or Microsoft sign-in provider.");
+        if ((input.NewPassword?.Length ?? 0) is < 12 or > 200)
+            throw new ApiError(400, "Use a new password of 12 to 200 characters.");
+        // A session revoked by a competing password change cannot make another change.
+        await MarkSessionVerified(id, session);
         Password(user, input.Password);
         await Verify(user, input.Code);
-        user.TwoFactorSecret = null;
-        user.TwoFactorPendingSecret = null;
-        user.TwoFactorPendingExpiresAt = null;
-        user.TwoFactorLastStep = null;
-        // Persist a consumed recovery code before deleting the remaining set.
-        await db.SaveChangesAsync();
-        await db.RecoveryCodes.Where(x => x.UserId == id).ExecuteDeleteAsync();
+        user.PasswordHash = new PasswordHasher<string>().HashPassword(id.ToString(), input.NewPassword!);
         await RevokeOtherSessions(id, session);
         return true;
     });

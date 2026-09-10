@@ -41,7 +41,7 @@ a:focus-visible {
   outline: 2px solid #5c7494;
   outline-offset: 4px;
 }
-input:focus,
+input:focus:not(.task-title-input),
 textarea:focus,
 select:focus {
   outline: 2px solid #8ba4c5;
@@ -1560,6 +1560,10 @@ h1 .title-dot:last-child {
   letter-spacing: -0.5px;
   padding: 7px 0;
   margin-bottom: 22px;
+}
+.task-title-input:focus {
+  outline: none;
+  box-shadow: inset 0 -1px 0 var(--muted);
 }
 .task-fields {
   display: grid;
@@ -5377,4 +5381,78 @@ button:disabled {
 }
 .enrollment-card .two-factor-settings {
   margin: 24px 0;
+}
+
+.change-password {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #d7e2ef;
+}
+
+.profile-layout > * {
+  min-width: 0;
+}
+@media (min-width: 761px) {
+  .modal.profile-modal {
+    width: 940px;
+    max-width: calc(100vw - 50px);
+  }
+  .profile-layout-security {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+  }
+  .profile-layout-security > .two-factor-settings {
+    margin: 25px 0;
+    padding: 0 25px;
+    border-top: 0;
+    border-left: 1px solid #d7e2ef;
+  }
+  .profile-layout-security > .two-factor-settings > h3 {
+    margin-top: 0;
+  }
+  .profile-layout .change-password .two-factor-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 14px;
+  }
+  .profile-layout .change-password .two-factor-form > :not(label) {
+    grid-column: 1 / -1;
+  }
+  .profile-layout .change-password .two-factor-form > label {
+    margin: 8px 0;
+  }
+}
+
+.avatar-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 20px 0;
+}
+.avatar-choice {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid #d7e2ef;
+  border-radius: 10px;
+}
+.avatar-choice[aria-pressed='true'] {
+  border-color: #506c8e;
+  background: #e7eef6;
+}
+.avatar-choice img {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.avatar-upload {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.avatar-upload input {
+  width: 100%;
 }

@@ -1,3 +1,4 @@
+import { ChangePassword } from './ChangePassword';
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useState } from 'react';
 import { apiRequest } from '../../infrastructure/apiClient';
@@ -15,7 +16,9 @@ export function TwoFactorSettings({ onComplete }: { onComplete?: () => void } = 
   const { t } = useI18n();
   const [status, setStatus] = useState<Status | null>(null);
   const [setup, setSetup] = useState<Setup | null>(null);
-  const [action, setAction] = useState<'setup' | 'disable' | 'recovery-codes' | null>(null);
+  const [action, setAction] = useState<'setup' | 'recovery-codes' | null>(
+    onComplete ? 'setup' : null,
+  );
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [codes, setCodes] = useState<string[]>([]);
@@ -138,7 +141,7 @@ export function TwoFactorSettings({ onComplete }: { onComplete?: () => void } = 
                     setStatus({
                       ...status!,
                       available: true,
-                      enabled: action !== 'disable',
+                      enabled: true,
                       recoveryCodesRemaining: result && 'codes' in result ? result.codes.length : 0,
                     });
                     reset();
@@ -152,9 +155,6 @@ export function TwoFactorSettings({ onComplete }: { onComplete?: () => void } = 
                 }
               }}
             >
-              {action === 'disable' && (
-                <p>{t('Confirm your password and a code to disable two-factor authentication.')}</p>
-              )}
               {action === 'recovery-codes' && (
                 <p>{t('Generating new recovery codes invalidates all previous codes.')}</p>
               )}
@@ -220,12 +220,10 @@ export function TwoFactorSettings({ onComplete }: { onComplete?: () => void } = 
                     busy
                       ? 'Working…'
                       : setup
-                        ? 'Verify and enable'
+                        ? 'Confirm authenticator'
                         : action === 'setup'
                           ? 'Set up authenticator'
-                          : action === 'disable'
-                            ? 'Disable two-factor authentication'
-                            : 'Generate recovery codes',
+                          : 'Generate recovery codes',
                   )}
                 </button>
                 <button
@@ -234,10 +232,11 @@ export function TwoFactorSettings({ onComplete }: { onComplete?: () => void } = 
                   disabled={busy}
                   onClick={() => {
                     reset();
+                    if (onComplete) setAction('setup');
                     setError('');
                   }}
                 >
-                  {t('Cancel')}
+                  {t(onComplete ? 'Start setup again' : 'Cancel')}
                 </button>
               </div>
             </form>
@@ -255,18 +254,6 @@ export function TwoFactorSettings({ onComplete }: { onComplete?: () => void } = 
                   >
                     {t('Generate recovery codes')}
                   </button>
-                  {!status.required && (
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => {
-                        setAction('disable');
-                        setError('');
-                      }}
-                    >
-                      {t('Disable two-factor authentication')}
-                    </button>
-                  )}
                 </>
               ) : (
                 <button
@@ -277,11 +264,22 @@ export function TwoFactorSettings({ onComplete }: { onComplete?: () => void } = 
                     setError('');
                   }}
                 >
-                  {t('Enable two-factor authentication')}
+                  {t('Set up two-factor authentication')}
                 </button>
               )}
             </div>
           )}
+          {!onComplete &&
+            status.enabled &&
+            (status.passwordRequired ? (
+              <ChangePassword
+                onChanged={() => {
+                  void refresh().catch(() => setError('Could not load security settings.'));
+                }}
+              />
+            ) : (
+              <p>{t('Change your password with your Google or Microsoft sign-in provider.')}</p>
+            ))}
         </>
       )}
     </section>

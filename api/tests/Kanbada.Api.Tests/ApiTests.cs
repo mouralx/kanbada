@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 using Xunit;
+using OtpNet;
 using Kanbada.Api;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,6 +66,7 @@ public sealed class ApiFixture : IAsyncLifetime
 
 public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 {
+    private readonly Dictionary<string, string> loginCodes = new();
     static async Task<JsonObject> Body(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
@@ -76,12 +78,18 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     {
         var c = fixture.Client();
         var email = Guid.NewGuid() + "@example.test";
-        await Body(await c.PostAsJsonAsync("/api/auth/register", new { email, password = "Correct-Horse-Test-Password", name = "Test " + Guid.NewGuid().ToString("N")[..6] }));
-        // These workspace/legacy-login tests model accounts predating mandatory enrollment.
-        // New-account enforcement is exercised separately in TwoFactorTests.
+        var registration = await Body(await c.PostAsJsonAsync("/api/auth/register", new { email, password = "Correct-Horse-Test-Password", name = "Test " + Guid.NewGuid().ToString("N")[..6] }));
+        // Complete real enrollment for workspace fixtures without spending the HTTP rate-limit budget.
         using var scope = fixture.Factory.Services.CreateScope();
-        await scope.ServiceProvider.GetRequiredService<KanbadaDbContext>().Users.Where(x => x.Email == email)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.TwoFactorRequired, false));
+        var id = Guid.Parse(registration["id"]!.ToString());
+        var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
+        var sid = await db.Sessions.Where(x => x.UserId == id).Select(x => x.Id).SingleAsync();
+        await scope.ServiceProvider.GetRequiredService<AccountAvatar>().Save(id, new AvatarInput(AvatarTests.Photo), default);
+        var factor = scope.ServiceProvider.GetRequiredService<TwoFactor>();
+        var setup = await factor.Setup(id, "Correct-Horse-Test-Password");
+        var code = new Totp(Base32Encoding.ToBytes(setup.Secret)).ComputeTotp();
+        var recovery = await factor.Confirm(id, new TwoFactorInput("Correct-Horse-Test-Password", code), sid);
+        loginCodes[email] = recovery.Codes[0];
         return (c, email);
     }
 
@@ -127,7 +135,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/api/workspaces")).StatusCode);
             var wrong = await c.PostAsJsonAsync("/api/auth/login", new { email, password = "incorrect-password", name = "" });
             Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
-            var good = await c.PostAsJsonAsync("/api/auth/login", new { email, password = "Correct-Horse-Test-Password", name = "" });
+            var good = await c.PostAsJsonAsync("/api/auth/login", new { email, password = "Correct-Horse-Test-Password", name = "", code = loginCodes[email] });
             Assert.Equal(HttpStatusCode.NoContent, good.StatusCode);
             Assert.True((await c.GetAsync("/api/workspaces")).IsSuccessStatusCode);
         }
@@ -160,7 +168,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             Assert.Equal(HttpStatusCode.BadRequest, (await c.SendAsync(bad)).StatusCode);
             state["tasks"]!.AsArray().Add(Card());
             var saved = await Save(c, state);
-            Assert.Equal(2, saved["version"]!.GetValue<int>());
+            Assert.Equal(state["version"]!.GetValue<int>() + 1, saved["version"]!.GetValue<int>());
             Assert.Single(saved["tasks"]![0]!["history"]!.AsArray());
             Assert.NotEmpty(saved["tasks"]![0]!["history"]![0]!["actor"]!.ToString());
             using var stale = new HttpRequestMessage(HttpMethod.Put, "/api/workspaces/studio")
@@ -220,13 +228,13 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             Assert.Equal("Medium", card["priority"]!.ToString());
             Assert.Equal("", card["due"]!.ToString());
             Assert.Single(card["history"]!.AsArray());
-            Assert.Equal("\"2\"", response.Headers.ETag!.Tag);
+            Assert.Equal("\"3\"", response.Headers.ETag!.Tag);
             Assert.Equal(card["id"]!.ToString(), (await Body(await client.GetAsync(response.Headers.Location)))["id"]!.ToString());
             var invalid = await client.PostAsJsonAsync("/api/workspaces/studio/cards", new { title = "Bad reference", status = "Unknown status" });
             Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
             var state = await Body(await client.GetAsync("/api/workspaces/studio"));
             Assert.Single(state["tasks"]!.AsArray());
-            Assert.Equal("2", state["version"]!.ToString());
+            Assert.Equal("3", state["version"]!.ToString());
         }
     }
 

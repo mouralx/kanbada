@@ -1,3 +1,4 @@
+import { AvatarGate } from './AvatarGate';
 import { TwoFactorGate } from './TwoFactorGate';
 import { Brand } from '../../shared/Brand';
 import { ArrowRight, LockKeyhole, Mail } from 'lucide-react';
@@ -11,6 +12,7 @@ import { LogoutContext } from './LogoutContext';
 type Session = {
   user: Account | null;
   providers: { google: boolean; microsoft: boolean };
+  avatarRequired?: boolean;
   twoFactorSetupRequired?: boolean;
   twoFactorVerificationRequired?: boolean;
 };
@@ -82,6 +84,8 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
         kanbada<span>{t('Loading…')}</span>
       </div>
     );
+  if (session.user && session.avatarRequired)
+    return <AvatarGate onComplete={() => void refresh()} onLogout={() => void logout()} />;
   if (
     session.user &&
     (enrollmentActive || session.twoFactorSetupRequired || session.twoFactorVerificationRequired)

@@ -8,7 +8,7 @@ There are no JSON/JSONB business-data columns. JSON remains the HTTP/export form
 
 ## Tables and relationships
 
-- `recovery_codes`: user-bound hashes of single-use authenticator recovery codes. Authenticator secrets and pending setup are encrypted in `users`; expiry, replay prevention, and failure-lockout state are stored alongside them. New registrations set `users.two_factor_required`; existing rows default to false. `sessions.two_factor_verified` tracks assurance per session, and unverified/unenrolled sessions are restricted by middleware. Second-factor changes and login session creation serialize on the user row within an EF transaction.
+- `recovery_codes`: user-bound hashes of single-use authenticator recovery codes. Authenticator secrets and pending setup are encrypted in `users`; expiry, replay prevention, and failure-lockout state are stored alongside them. The per-account `two_factor_required` flag was removed by `EnforceTwoFactorForAllAccounts`; enrollment is mandatory for every user. `sessions.two_factor_verified` tracks assurance per session, and unverified/unenrolled sessions are restricted by middleware. Second-factor changes and login session creation serialize on the user row within an EF transaction.
 - `users`, `identities`, `sessions`: accounts, provider subjects, and revocable session hashes. Email alone never links external identities. Password-account emails are unique and normalized to lowercase.
 - `workspaces`: owner, personal flag, name, icon, banner, banner position, version, update timestamp. A partial unique index allows one personal workspace per owner.
 - `members`: workspace/email key, registered user ID or pending invitation token, name, initials, color, photo, display order. This is authoritative for authorization.
@@ -70,3 +70,5 @@ Files retain the 25 MiB upload limit. Resized profile/workspace images are data-
 The Compose volume is `kanbada-postgres-data`; stopping the container preserves it. Expired sessions are cleaned up on session issuance, share expiry is checked on reads, and abandoned uploads can be deleted by the uploader while unreferenced. There is no scheduled orphan-file retention job.
 
 See Microsoft's guidance on [EF optimistic concurrency](https://learn.microsoft.com/en-us/ef/core/saving/concurrency) and [applying migrations in production](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying).
+
+New accounts set `users.PhotoRequired`; `users.Photo` stores the selected avatar data URI. Existing accounts retain optional photos. Registration avatar saves synchronize membership photos and increment affected workspace versions. New workspaces and accepted invitations inherit the account photo.

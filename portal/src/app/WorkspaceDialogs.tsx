@@ -65,7 +65,7 @@ export function WorkspaceDialogs({
           role="dialog"
           aria-modal="true"
           aria-label={t(modal)}
-          className="modal"
+          className={`modal ${modal === 'Profile' ? 'profile-modal' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="modal-heading">
@@ -393,14 +393,14 @@ export function WorkspaceDialogs({
           ) : modal === 'Profile' ? (
             <ProfileForm
               member={currentMember}
-              onSave={async (name, email, photo) => {
+              onSave={async (name, photo) => {
                 if (
                   data.members
                     .filter((member) => member !== currentMember)
                     .some(
                       (m) =>
                         m.name.toLowerCase() === name.toLowerCase() ||
-                        m.email.toLowerCase() === email.toLowerCase(),
+                        m.email.toLowerCase() === currentMember.email.toLowerCase(),
                     )
                 ) {
                   setToast('This name or email belongs to another teammate');
@@ -416,7 +416,6 @@ export function WorkspaceDialogs({
                           ? {
                               ...m,
                               name,
-                              email,
                               photo,
                               initials: name
                                 .split(' ')
