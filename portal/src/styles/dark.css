@@ -1312,6 +1312,10 @@
     color: #e5e5e7;
     background: #1b1d21
 }
+:root[data-theme="dark"] .sidebar-tooltip {
+    color: #cacbd0;
+    box-shadow: 0 4px 12px #00000026
+}
 :root[data-theme="dark"]{--line:#383b42;--muted:#a6a8ae;--green:#9aacbf;color-scheme:dark}
 :root[data-theme="dark"] .avatar{color:#26384e}
 :root[data-theme="dark"] .completion-donut>span{background:#232529}

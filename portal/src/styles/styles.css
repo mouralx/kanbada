@@ -5267,3 +5267,25 @@ button:disabled {
   color: #283a51;
   background: #d7e2ef;
 }
+
+.sidebar-tooltip {
+  position: fixed;
+  z-index: 1000;
+  transform: translateY(-50%);
+  max-width: min(280px, calc(100vw - 100px));
+  padding: 8px 12px;
+  border: 1px solid #3f444a;
+  border-radius: 6px;
+  background: #22262c;
+  color: #eff2f6;
+  box-shadow: 0 4px 12px #10172426;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  .sidebar-tooltip {
+    display: none;
+  }
+}

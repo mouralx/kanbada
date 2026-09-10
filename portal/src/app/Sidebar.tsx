@@ -11,7 +11,8 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Member } from '../domain/models';
 import { type Project, type State, type Task } from '../domain/models';
 import { isActivitiesProject } from '../domain/projectRules';
@@ -50,8 +51,55 @@ export function Sidebar({
   setProjectId,
   avatar,
 }: SidebarProps) {
+  const [tooltip, setTooltip] = useState<{ label: string; left: number; top: number } | null>(null);
+  const showTooltip = (event: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>) => {
+    if (!sidebarCollapsed || !window.matchMedia('(min-width: 761px)').matches) return;
+    const button = (event.target as Element).closest('button');
+    const label = button?.getAttribute('aria-label');
+    if (!button || !label) {
+      setTooltip(null);
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    setTooltip({
+      label,
+      left: event.currentTarget.getBoundingClientRect().right + 12,
+      top: Math.max(24, Math.min(window.innerHeight - 24, rect.top + rect.height / 2)),
+    });
+  };
+  useEffect(() => {
+    const dismiss = () => setTooltip(null);
+    window.addEventListener('resize', dismiss);
+    window.addEventListener('scroll', dismiss, true);
+    return () => {
+      window.removeEventListener('resize', dismiss);
+      window.removeEventListener('scroll', dismiss, true);
+    };
+  }, []);
   return (
-    <aside className={`sidebar ${sidebar ? 'open' : ''}`}>
+    <aside
+      className={`sidebar ${sidebar ? 'open' : ''}`}
+      onMouseOver={showTooltip}
+      onMouseLeave={() => setTooltip(null)}
+      onFocus={showTooltip}
+      onBlur={() => setTooltip(null)}
+      onClick={() => setTooltip(null)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setTooltip(null);
+      }}
+    >
+      {sidebarCollapsed &&
+        tooltip &&
+        createPortal(
+          <div
+            className="sidebar-tooltip"
+            role="tooltip"
+            style={{ left: tooltip.left, top: tooltip.top }}
+          >
+            {tooltip.label}
+          </div>,
+          document.body,
+        )}
       <a
         className="logo"
         href="#"
@@ -65,7 +113,13 @@ export function Sidebar({
       <button
         className="sidebar-collapse-toggle"
         aria-label={sidebarCollapsed ? t('Expand sidebar') : t('Collapse sidebar')}
-        title={sidebarCollapsed ? t('Expand sidebar') : t('Collapse sidebar')}
+        title={
+          sidebarCollapsed
+            ? undefined
+            : sidebarCollapsed
+              ? t('Expand sidebar')
+              : t('Collapse sidebar')
+        }
         aria-expanded={!sidebarCollapsed}
         onClick={() => {
           const next = !sidebarCollapsed;
@@ -81,7 +135,7 @@ export function Sidebar({
       </button>
       <button
         aria-label={t('Switch workspace')}
-        title={data.workspace.name}
+        title={sidebarCollapsed ? undefined : data.workspace.name}
         className="workspace"
         onClick={() => setModal('Workspace')}
       >
@@ -113,7 +167,7 @@ export function Sidebar({
         ].map(({ name, icon: Icon }) => (
           <button
             aria-label={t(name)}
-            title={t(name)}
+            title={sidebarCollapsed ? undefined : t(name)}
             key={name}
             className={
               page === name || (name === 'Projects' && page === 'Project directory') ? 'active' : ''
@@ -145,7 +199,9 @@ export function Sidebar({
           .map((p) => (
             <button
               aria-label={isActivitiesProject(p) ? t('My activities') : p.name}
-              title={isActivitiesProject(p) ? t('My activities') : p.name}
+              title={
+                sidebarCollapsed ? undefined : isActivitiesProject(p) ? t('My activities') : p.name
+              }
               key={p.id}
               className={project.id === p.id && page === 'Projects' ? 'selected' : ''}
               onClick={() => {
@@ -163,7 +219,7 @@ export function Sidebar({
       </div>
       <button
         aria-label={t('New project')}
-        title={t('New project')}
+        title={sidebarCollapsed ? undefined : t('New project')}
         className="new-project"
         onClick={() => setModal('New project')}
       >
@@ -174,19 +230,23 @@ export function Sidebar({
         <LogoutButton />
         <button
           aria-label={t('Settings')}
-          title={t('Settings')}
+          title={sidebarCollapsed ? undefined : t('Settings')}
           onClick={() => setModal('Settings')}
         >
           <Settings size={17} />
           <span className="nav-text">{t('Settings')}</span>
         </button>
-        <button aria-label={t('Help')} title={t('Help')} onClick={() => navigate('Help')}>
+        <button
+          aria-label={t('Help')}
+          title={sidebarCollapsed ? undefined : t('Help')}
+          onClick={() => navigate('Help')}
+        >
           <CircleHelp size={17} />
           <span className="nav-text">{t('Help')}</span>
         </button>
         <button
           aria-label={t('Edit profile')}
-          title={currentMember.name}
+          title={sidebarCollapsed ? undefined : currentMember.name}
           className="profile"
           onClick={() => setModal('Profile')}
         >
