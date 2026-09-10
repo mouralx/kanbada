@@ -1,3 +1,4 @@
+import { Brand } from '../../shared/Brand';
 import { ArrowLeft, ArrowRight, Check, LogOut, Plus } from 'lucide-react';
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { setStorageAccount } from '../../infrastructure/accountStorage';
@@ -137,8 +138,8 @@ function LocalAuthBoundary({ children }: { children: ReactNode }) {
   return (
     <main className="auth-page">
       <section className="auth-story">
-        <a className="auth-logo" href="/">
-          ▥ kanbada
+        <a className="logo auth-logo" href="/">
+          <Brand />
         </a>
         <div>
           <span className="auth-eyebrow">{t('A LITTLE STRUCTURE. A LOT OF POSSIBILITY.')}</span>
@@ -156,16 +157,18 @@ function LocalAuthBoundary({ children }: { children: ReactNode }) {
         <small>{t('Less busywork. More progress.')}</small>
       </section>
       <section className="auth-content">
-        <ThemeSelect compact />
-        <select
-          className="language-switch"
-          aria-label={t('Interface language')}
-          value={locale}
-          onChange={(e) => setLocale(e.target.value as Locale)}
-        >
-          <option value="en-US">EN</option>
-          <option value="pt-PT">PT</option>
-        </select>
+        <div className="auth-preferences">
+          <ThemeSelect compact iconOnly />
+          <select
+            className="language-switch"
+            aria-label={t('Interface language')}
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+          >
+            <option value="en-US">EN</option>
+            <option value="pt-PT">PT</option>
+          </select>
+        </div>
         <div className="auth-form">
           {provider && (
             <button

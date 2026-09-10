@@ -1,3 +1,4 @@
+import { Brand } from '../shared/Brand';
 import {
   CheckSquare,
   ChevronDown,
@@ -59,13 +60,7 @@ export function Sidebar({
           navigate('Projects');
         }}
       >
-        <span className="logo-symbol">
-          <i />
-          <i />
-          <i />
-        </span>
-        <span className="logo-word">{t('kanbada')}</span>
-        <span className="logo-dot">®</span>
+        <Brand />
       </a>
       <button
         className="sidebar-collapse-toggle"

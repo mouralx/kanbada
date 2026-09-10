@@ -1,3 +1,4 @@
+import { Brand } from '../../shared/Brand';
 import { ArrowRight, LockKeyhole, Mail } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { setStorageAccount } from '../../infrastructure/accountStorage';
@@ -80,8 +81,8 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
   return (
     <main className="auth-page">
       <section className="auth-story">
-        <a className="auth-logo" href="/">
-          ▥ kanbada
+        <a className="logo auth-logo" href="/">
+          <Brand />
         </a>
         <div>
           <span className="auth-eyebrow">{t('A LITTLE STRUCTURE. A LOT OF POSSIBILITY.')}</span>
@@ -99,16 +100,18 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
         <small>{t('Less busywork. More progress.')}</small>
       </section>
       <section className="auth-content">
-        <ThemeSelect compact />
-        <select
-          className="language-switch"
-          aria-label={t('Interface language')}
-          value={locale}
-          onChange={(e) => setLocale(e.target.value as Locale)}
-        >
-          <option value="en-US">EN</option>
-          <option value="pt-PT">PT</option>
-        </select>
+        <div className="auth-preferences">
+          <ThemeSelect compact iconOnly />
+          <select
+            className="language-switch"
+            aria-label={t('Interface language')}
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+          >
+            <option value="en-US">EN</option>
+            <option value="pt-PT">PT</option>
+          </select>
+        </div>
         <div className="auth-form">
           <span className="auth-eyebrow">KANBADA</span>
           <h2>{t(register ? 'Create your account' : 'Welcome to your workspace.')}</h2>

@@ -1,5 +1,14 @@
-import { Monitor, Moon, Sun } from 'lucide-react';
-import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react';
+import { ChevronDown, Monitor, Moon, Sun } from 'lucide-react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useI18n } from './i18n';
 type Theme = 'light' | 'dark' | 'system';
 const valid = (value: string | null): Theme =>
@@ -48,7 +57,89 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
   return <Context.Provider value={{ theme, setTheme: choose }}>{children}</Context.Provider>;
 }
-export function ThemeSelect({ compact = false }: { compact?: boolean }) {
+export function ThemeSelect({
+  compact = false,
+  iconOnly = false,
+}: {
+  compact?: boolean;
+  iconOnly?: boolean;
+}) {
+  return iconOnly ? <ThemeIconSelect /> : <ThemeTextSelect compact={compact} />;
+}
+function ThemeIconSelect() {
+  const { theme, setTheme } = useContext(Context);
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  const options = [
+    { value: 'light', label: 'Light', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+    { value: 'system', label: 'System', icon: Monitor },
+  ] as const;
+  const selected = options.find((option) => option.value === theme)!;
+  const Icon = selected.icon;
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, [open]);
+  return (
+    <div
+      className="theme-icon-control"
+      ref={root}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && open) {
+          event.preventDefault();
+          setOpen(false);
+          trigger.current?.focus();
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="theme-icon-trigger"
+        ref={trigger}
+        aria-label={`${t('Theme')}: ${t(selected.label)}`}
+        title={`${t('Theme')}: ${t(selected.label)}`}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+      >
+        <Icon size={17} aria-hidden="true" />
+        <ChevronDown size={12} aria-hidden="true" />
+      </button>
+      {open && (
+        <div id={id} className="theme-icon-options" role="group" aria-label={t('Theme')}>
+          {options.map(({ value, label, icon: OptionIcon }) => (
+            <button
+              type="button"
+              key={value}
+              aria-label={t(label)}
+              title={t(label)}
+              aria-pressed={theme === value}
+              onClick={() => {
+                setTheme(value);
+                setOpen(false);
+                trigger.current?.focus();
+              }}
+            >
+              <OptionIcon size={18} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function ThemeTextSelect({ compact }: { compact: boolean }) {
   const { theme, setTheme } = useContext(Context);
   const { t } = useI18n();
   const Icon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;

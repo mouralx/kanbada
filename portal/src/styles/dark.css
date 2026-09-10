@@ -1079,9 +1079,6 @@
 :root[data-theme="dark"] .auth-story {
     color: #cacbd0
 }
-:root[data-theme="dark"] .auth-logo {
-    color: #cacbd0
-}
 :root[data-theme="dark"] .auth-eyebrow {
     color: #a6a8ae
 }
@@ -1298,6 +1295,22 @@
     :root[data-theme="dark"] .help-categories button {
         background: #1b1d21
     }
+}
+:root[data-theme="dark"] .theme-icon-control {
+    color: #a6a8ae
+}
+:root[data-theme="dark"] .theme-icon-trigger {
+    border: 1px solid #383b42;
+    background: #232529
+}
+:root[data-theme="dark"] .theme-icon-options {
+    border: 1px solid #383b42;
+    background: #232529;
+    box-shadow: 0 6px 20px #00000026
+}
+:root[data-theme="dark"] .theme-icon-options button:hover,:root[data-theme="dark"] .theme-icon-options button[aria-pressed='true'] {
+    color: #e5e5e7;
+    background: #1b1d21
 }
 :root[data-theme="dark"]{--line:#383b42;--muted:#a6a8ae;--green:#9aacbf;color-scheme:dark}
 :root[data-theme="dark"] .avatar{color:#26384e}

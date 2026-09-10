@@ -4418,10 +4418,8 @@ button:disabled {
   overflow: hidden;
 }
 .auth-logo {
-  font: 800 30px Manrope;
-  color: white;
+  padding: 0;
   text-decoration: none;
-  letter-spacing: -1.5px;
 }
 .auth-eyebrow {
   font-size: 9px;
@@ -4489,10 +4487,17 @@ button:disabled {
   place-items: center;
   padding: 60px 35px;
 }
-.auth-content > .language-switch {
+.auth-preferences {
   position: absolute;
   right: 32px;
   top: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.auth-preferences .theme-icon-trigger,
+.auth-preferences .language-switch {
+  height: 36px;
 }
 .auth-form {
   width: 100%;
@@ -4702,7 +4707,7 @@ button:disabled {
     padding: 65px 28px 35px;
     min-height: 500px;
   }
-  .auth-content > .language-switch {
+  .auth-preferences {
     top: 18px;
   }
   .auth-form h2 {
@@ -5223,4 +5228,42 @@ button:disabled {
   .help-hero > svg {
     display: none;
   }
+}
+
+.theme-icon-control {
+  position: relative;
+  color: #627c9c;
+}
+.theme-icon-trigger,
+.theme-icon-options button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 6px;
+}
+.theme-icon-trigger {
+  gap: 5px;
+  padding: 0 7px;
+  border: 1px solid #d7e2ef;
+  background: #f7fafd;
+}
+.theme-icon-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid #d7e2ef;
+  border-radius: 8px;
+  background: #f7fafd;
+  box-shadow: 0 6px 20px #10172426;
+}
+.theme-icon-options button:hover,
+.theme-icon-options button[aria-pressed='true'] {
+  color: #283a51;
+  background: #d7e2ef;
 }
