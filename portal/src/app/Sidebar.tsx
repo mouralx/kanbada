@@ -113,13 +113,7 @@ export function Sidebar({
       <button
         className="sidebar-collapse-toggle"
         aria-label={sidebarCollapsed ? t('Expand sidebar') : t('Collapse sidebar')}
-        title={
-          sidebarCollapsed
-            ? undefined
-            : sidebarCollapsed
-              ? t('Expand sidebar')
-              : t('Collapse sidebar')
-        }
+        title={sidebarCollapsed ? undefined : t('Collapse sidebar')}
         aria-expanded={!sidebarCollapsed}
         onClick={() => {
           const next = !sidebarCollapsed;
