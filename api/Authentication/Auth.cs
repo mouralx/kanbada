@@ -11,12 +11,12 @@ public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces)
     public static string Token() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
     public static string Hash(string token) => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
     public static Guid User(HttpContext ctx) => Guid.TryParse(ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : throw new ApiError(401, "Please sign in.");
-    public async Task Session(HttpContext ctx, Guid user)
+    public async Task Session(HttpContext ctx, Guid user, bool twoFactorVerified = false)
     {
         var previous = ctx.User.FindFirstValue("sid");
         await db.Sessions.Where(x => x.Id == previous || x.ExpiresAt < DateTimeOffset.UtcNow).ExecuteDeleteAsync();
         var sid = Hash(Token());
-        db.Sessions.Add(new SessionEntity { Id = sid, UserId = user, ExpiresAt = DateTimeOffset.UtcNow.AddHours(8) });
+        db.Sessions.Add(new SessionEntity { Id = sid, UserId = user, TwoFactorVerified = twoFactorVerified, ExpiresAt = DateTimeOffset.UtcNow.AddHours(8) });
         await db.SaveChangesAsync();
         var profile = await db.Users.AsNoTracking().SingleAsync(x => x.Id == user);
         var principal = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, user.ToString()), new Claim(ClaimTypes.Name, profile.Name), new Claim(ClaimTypes.Email, profile.Email), new Claim("sid", sid) }, "session"));
@@ -34,7 +34,7 @@ public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces)
         await using var tx = await db.Database.BeginTransactionAsync();
         try
         {
-            db.Users.Add(new UserEntity { Id = id, Email = email, Name = name, PasswordHash = hash });
+            db.Users.Add(new UserEntity { Id = id, Email = email, Name = name, PasswordHash = hash, TwoFactorRequired = true });
             await db.SaveChangesAsync();
             await workspaces.Create(id, "My Workspace", true);
             await tx.CommitAsync();
@@ -80,7 +80,7 @@ public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces)
         if (existing is not null) return existing.UserId;
         await using var tx = await db.Database.BeginTransactionAsync();
         var id = Guid.NewGuid();
-        db.Users.Add(new UserEntity { Id = id, Email = email.ToLowerInvariant(), Name = name });
+        db.Users.Add(new UserEntity { Id = id, Email = email.ToLowerInvariant(), Name = name, TwoFactorRequired = true });
         db.Identities.Add(new IdentityEntity { Provider = provider, Subject = subject, UserId = id });
         await db.SaveChangesAsync();
         await workspaces.Create(id, "My Workspace", true);

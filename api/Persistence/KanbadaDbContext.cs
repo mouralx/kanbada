@@ -5,6 +5,7 @@ namespace Kanbada.Api;
 
 public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options) : DbContext(options)
 {
+    public DbSet<RecoveryCodeEntity> RecoveryCodes => Set<RecoveryCodeEntity>();
     public DbSet<UserEntity> Users => Set<UserEntity>();
     public DbSet<IdentityEntity> Identities => Set<IdentityEntity>();
     public DbSet<SessionEntity> Sessions => Set<SessionEntity>();
@@ -36,6 +37,12 @@ public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options)
             e.HasKey(x => x.Id);
             e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
             e.HasIndex(x => x.Email).IsUnique().HasFilter("password_hash IS NOT NULL");
+        });
+        model.Entity<RecoveryCodeEntity>(e =>
+        {
+            e.ToTable("recovery_codes");
+            e.HasKey(x => new { x.UserId, x.Hash });
+            e.HasOne<UserEntity>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
         model.Entity<IdentityEntity>(e =>
         {

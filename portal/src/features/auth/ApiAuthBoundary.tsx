@@ -1,3 +1,4 @@
+import { TwoFactorGate } from './TwoFactorGate';
 import { Brand } from '../../shared/Brand';
 import { ArrowRight, LockKeyhole, Mail } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -7,17 +8,25 @@ import type { Account } from '../../infrastructure/auth';
 import { useI18n, type Locale } from '../../shared/i18n';
 import { ThemeSelect } from '../../shared/Theme';
 import { LogoutContext } from './LogoutContext';
-type Session = { user: Account | null; providers: { google: boolean; microsoft: boolean } };
+type Session = {
+  user: Account | null;
+  providers: { google: boolean; microsoft: boolean };
+  twoFactorSetupRequired?: boolean;
+  twoFactorVerificationRequired?: boolean;
+};
 export function ApiAuthBoundary({ children }: { children: ReactNode }) {
   const { t, locale, setLocale } = useI18n();
+  const [enrollmentActive, setEnrollmentActive] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [register, setRegister] = useState(false);
   const [emailForm, setEmailForm] = useState(false);
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const refresh = async () => {
     try {
       const value = await apiRequest<Session>('/auth/session');
+      if (value.twoFactorSetupRequired) setEnrollmentActive(true);
       setStorageAccount(value.user);
       setSession(value);
     } catch {
@@ -57,6 +66,7 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
     setError('');
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
+      setEnrollmentActive(false);
       setStorageAccount(null);
       setSession((previous) => (previous ? { ...previous, user: null } : null));
       signal();
@@ -71,6 +81,20 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
       <div className="loading">
         kanbada<span>{t('Loading…')}</span>
       </div>
+    );
+  if (
+    session.user &&
+    (enrollmentActive || session.twoFactorSetupRequired || session.twoFactorVerificationRequired)
+  )
+    return (
+      <TwoFactorGate
+        setup={enrollmentActive || !!session.twoFactorSetupRequired}
+        onComplete={() => {
+          setEnrollmentActive(false);
+          void refresh();
+        }}
+        onLogout={() => void logout()}
+      />
     );
   if (session.user)
     return (
@@ -150,18 +174,31 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                const form = new FormData(e.currentTarget);
+                const element = e.currentTarget;
+                const form = new FormData(element);
                 setBusy(true);
                 setError('');
                 try {
-                  await apiRequest('/auth/' + (register ? 'register' : 'login'), {
-                    method: 'POST',
-                    body: JSON.stringify({
-                      name: form.get('name') || '',
-                      email: form.get('email'),
-                      password: form.get('password'),
-                    }),
-                  });
+                  const result = await apiRequest<{ twoFactorRequired?: boolean } | undefined>(
+                    '/auth/' + (register ? 'register' : 'login'),
+                    {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        name: form.get('name') || '',
+                        email: form.get('email'),
+                        password: form.get('password'),
+                        code: form.get('code') || undefined,
+                      }),
+                    },
+                  );
+                  if (result?.twoFactorRequired) {
+                    setTwoFactorRequired(true);
+                    return;
+                  }
+                  element.reset();
+                  setRegister(false);
+                  setEmailForm(false);
+                  setTwoFactorRequired(false);
                   await refresh();
                   signal();
                 } catch (e) {
@@ -192,7 +229,32 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
                   required
                 />
               </label>
-              {register && <p>{t('Use at least 12 characters.')}</p>}
+              {twoFactorRequired && !register && (
+                <>
+                  <label>
+                    {t('Authenticator or recovery code')}
+                    <input
+                      name="code"
+                      aria-describedby="auth-code-help"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      required
+                      maxLength={100}
+                    />
+                  </label>
+                  <p id="auth-code-help">
+                    {t(
+                      'Enter a code from your authenticator app, or one of your saved recovery codes.',
+                    )}
+                  </p>
+                </>
+              )}
+              {register && (
+                <>
+                  <p>{t('Use at least 12 characters.')}</p>
+                  <p>{t('An authenticator app is required to finish registration.')}</p>
+                </>
+              )}
               <button className="auth-submit" disabled={busy}>
                 {t(busy ? 'Working…' : register ? 'Create account' : 'Sign in')}
               </button>
@@ -201,6 +263,7 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
                 className="auth-back"
                 onClick={() => {
                   setRegister(!register);
+                  setTwoFactorRequired(false);
                   setError('');
                 }}
               >

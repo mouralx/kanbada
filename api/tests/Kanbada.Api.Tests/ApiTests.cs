@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 using Xunit;
+using Kanbada.Api;
+using Microsoft.EntityFrameworkCore;
 
 public sealed class ApiFixture : IAsyncLifetime
 {
@@ -75,6 +77,11 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         var c = fixture.Client();
         var email = Guid.NewGuid() + "@example.test";
         await Body(await c.PostAsJsonAsync("/api/auth/register", new { email, password = "Correct-Horse-Test-Password", name = "Test " + Guid.NewGuid().ToString("N")[..6] }));
+        // These workspace/legacy-login tests model accounts predating mandatory enrollment.
+        // New-account enforcement is exercised separately in TwoFactorTests.
+        using var scope = fixture.Factory.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<KanbadaDbContext>().Users.Where(x => x.Email == email)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.TwoFactorRequired, false));
         return (c, email);
     }
 
@@ -109,7 +116,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         var unauth = await anonymous.GetAsync("/api/workspaces");
         Assert.Equal(HttpStatusCode.Unauthorized, unauth.StatusCode);
         Assert.Equal("application/problem+json", unauth.Content.Headers.ContentType?.MediaType);
-        var(c, email) = await User();
+        var (c, email) = await User();
         using (c)
         {
             var session = await Body(await c.GetAsync("/api/auth/session"));
@@ -129,7 +136,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     [Fact]
     public async Task WorkspaceTransactions_ProtectInvariants_AndRejectStaleWrites()
     {
-        var(c, _) = await User();
+        var (c, _) = await User();
         using (c)
         {
             var state = await Body(await c.GetAsync("/api/workspaces/studio"));
@@ -226,8 +233,8 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     [Fact]
     public async Task Membership_RequiresInvitation_AndRemovalRevokesAccess()
     {
-        var(owner, _) = await User();
-        var(member, email) = await User();
+        var (owner, _) = await User();
+        var (member, email) = await User();
         using (owner)
         using (member)
         {
@@ -259,8 +266,8 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     [Fact]
     public async Task FilesAndSharing_EnforceReadOnlyAccess_ExpiryAndRevocation()
     {
-        var(owner, _) = await User();
-        var(viewer, _) = await User();
+        var (owner, _) = await User();
+        var (viewer, _) = await User();
         using (owner)
         using (viewer)
         {
@@ -395,7 +402,8 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             card["description"] = new string('d', 100000);
             state["tasks"]!.AsArray().Add(card);
             state = await Save(client, state);
-            using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/workspaces/studio") {
+            using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/workspaces/studio")
+            {
                 Content = JsonContent.Create(new { changes = new[] { new { op = "replace", path = "/tasks/0/title", value = "A small edit" } } })
             };
             request.Headers.TryAddWithoutValidation("If-Match", state["version"]!.ToString());
@@ -435,7 +443,8 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             var state = await Body(await client.GetAsync("/api/workspaces/studio"));
             foreach (var path in new[] { "/workspace/ownerId", "/tasks/999/title", "/__proto__/polluted", "/members/0/userId" })
             {
-                using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/workspaces/studio") {
+                using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/workspaces/studio")
+                {
                     Content = JsonContent.Create(new { changes = new[] { new { op = "add", path = "/activity/0", value = "Must roll back" }, new { op = "replace", path, value = "invalid" } } })
                 };
                 request.Headers.TryAddWithoutValidation("If-Match", state["version"]!.ToString());

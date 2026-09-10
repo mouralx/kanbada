@@ -433,6 +433,17 @@ kbd {
 .avatar-button {
   padding: 0;
 }
+.top-actions .avatar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.top-actions .avatar-button .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 12px;
+}
 .mobile-menu {
   display: none;
 }
@@ -5288,4 +5299,82 @@ button:disabled {
   .sidebar-tooltip {
     display: none;
   }
+}
+
+.two-factor-settings {
+  margin: 0 25px 25px;
+  padding-top: 20px;
+  border-top: 1px solid #d7e2ef;
+  color: #506c8e;
+  font-size: 12px;
+}
+.two-factor-settings h3 {
+  color: #283a51;
+}
+.two-factor-settings p {
+  line-height: 1.6;
+}
+.two-factor-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+.two-factor-form input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7e2ef;
+  border-radius: 6px;
+  background: #f7fafd;
+  color: #283a51;
+}
+.two-factor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.authenticator-setup > svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: white;
+}
+.recovery-codes pre {
+  overflow-x: auto;
+  padding: 12px;
+  background: #f7fafd;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.recovery-codes button {
+  margin: 4px 8px 4px 0;
+}
+.enrollment-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+}
+.enrollment-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 28px;
+  border: 1px solid #d7e2ef;
+  border-radius: 14px;
+  background: #f7fafd;
+  color: #506c8e;
+}
+.enrollment-card > .logo {
+  color: #283a51;
+  padding: 0;
+}
+.enrollment-card h1 {
+  font-size: 25px;
+  color: #283a51;
+}
+.enrollment-card p {
+  line-height: 1.6;
+}
+.enrollment-card .two-factor-settings {
+  margin: 24px 0;
 }

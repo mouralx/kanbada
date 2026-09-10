@@ -3,6 +3,7 @@ using System;
 using Kanbada.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Kanbada.Api.Persistence.Migrations
 {
     [DbContext(typeof(KanbadaDbContext))]
-    partial class KanbadaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910194540_AuthenticatorTwoFactor")]
+    partial class AuthenticatorTwoFactor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -585,10 +588,6 @@ namespace Kanbada.Api.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
-                    b.Property<bool>("TwoFactorVerified")
-                        .HasColumnType("boolean")
-                        .HasColumnName("two_factor_verified");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
@@ -764,10 +763,6 @@ namespace Kanbada.Api.Persistence.Migrations
                     b.Property<string>("TwoFactorPendingSecret")
                         .HasColumnType("text")
                         .HasColumnName("two_factor_pending_secret");
-
-                    b.Property<bool>("TwoFactorRequired")
-                        .HasColumnType("boolean")
-                        .HasColumnName("two_factor_required");
 
                     b.Property<string>("TwoFactorSecret")
                         .HasColumnType("text")

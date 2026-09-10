@@ -8,18 +8,39 @@ public static class AuthenticationEndpoints
     public static void Map(WebApplication app, Dictionary<string, bool> providers)
     {
         var api = app.MapGroup("").WithTags("Authentication");
-        api.MapGet("/api/auth/session", (HttpContext ctx) => Results.Ok(new { user = ctx.User.Identity?.IsAuthenticated == true ? new { id = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), name = ctx.User.FindFirstValue(ClaimTypes.Name), email = ctx.User.FindFirstValue(ClaimTypes.Email), provider = "email" } : null, providers }));
+        api.MapGet("/api/auth/session", (HttpContext ctx) => Results.Ok(new { user = ctx.User.Identity?.IsAuthenticated == true ? new { id = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier), name = ctx.User.FindFirstValue(ClaimTypes.Name), email = ctx.User.FindFirstValue(ClaimTypes.Email), provider = "email" } : null, providers, twoFactorSetupRequired = ctx.User.HasClaim("two_factor_pending", "true") && ctx.User.HasClaim("two_factor_setup", "true"), twoFactorVerificationRequired = ctx.User.HasClaim("two_factor_pending", "true") && !ctx.User.HasClaim("two_factor_setup", "true") }));
         api.MapPost("/api/auth/register", async (Credentials input, Auth auth, HttpContext ctx) =>
         {
             var user = await auth.Register(input);
             await auth.Session(ctx, user);
-            return Results.Ok(new { id = user });
+            return Results.Ok(new { id = user, twoFactorSetupRequired = true });
         }).RequireRateLimiting("auth");
-        api.MapPost("/api/auth/login", async (Credentials input, Auth auth, HttpContext ctx) =>
+        api.MapPost("/api/auth/login", async (Credentials input, Auth auth, TwoFactor twoFactor, HttpContext ctx) =>
         {
-            await auth.Session(ctx, await auth.Login(input));
+            var user = await auth.Login(input);
+            if (!await twoFactor.Login(user, input.Code, () => auth.Session(ctx, user, twoFactorVerified: true)))
+                return Results.Ok(new { twoFactorRequired = true });
             return Results.NoContent();
         }).RequireRateLimiting("auth");
+        var security = api.MapGroup("/api/auth/two-factor").RequireAuthorization().RequireRateLimiting("auth");
+        api.MapGet("/api/auth/two-factor", async (TwoFactor factor, HttpContext ctx) => Results.Ok(await factor.Status(Auth.User(ctx))))
+            .RequireAuthorization().RequireRateLimiting("auth");
+        security.MapPost("/setup", async (TwoFactorInput input, TwoFactor factor, HttpContext ctx) =>
+            Results.Ok(await factor.Setup(Auth.User(ctx), input.Password)));
+        security.MapPost("/confirm", async (TwoFactorInput input, TwoFactor factor, HttpContext ctx) =>
+            Results.Ok(await factor.Confirm(Auth.User(ctx), input, ctx.User.FindFirstValue("sid"))));
+        security.MapPost("/recovery-codes", async (TwoFactorInput input, TwoFactor factor, HttpContext ctx) =>
+            Results.Ok(await factor.Regenerate(Auth.User(ctx), input, ctx.User.FindFirstValue("sid"))));
+        security.MapPost("/verify", async (TwoFactorInput input, TwoFactor factor, HttpContext ctx) =>
+        {
+            await factor.VerifySession(Auth.User(ctx), input.Code, ctx.User.FindFirstValue("sid"));
+            return Results.NoContent();
+        });
+        security.MapPost("/disable", async (TwoFactorInput input, TwoFactor factor, HttpContext ctx) =>
+        {
+            await factor.Disable(Auth.User(ctx), input, ctx.User.FindFirstValue("sid"));
+            return Results.NoContent();
+        });
         api.MapPost("/api/auth/logout", async (Auth auth, HttpContext ctx) =>
         {
             await auth.Logout(ctx);

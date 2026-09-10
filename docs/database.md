@@ -8,6 +8,7 @@ There are no JSON/JSONB business-data columns. JSON remains the HTTP/export form
 
 ## Tables and relationships
 
+- `recovery_codes`: user-bound hashes of single-use authenticator recovery codes. Authenticator secrets and pending setup are encrypted in `users`; expiry, replay prevention, and failure-lockout state are stored alongside them. New registrations set `users.two_factor_required`; existing rows default to false. `sessions.two_factor_verified` tracks assurance per session, and unverified/unenrolled sessions are restricted by middleware. Second-factor changes and login session creation serialize on the user row within an EF transaction.
 - `users`, `identities`, `sessions`: accounts, provider subjects, and revocable session hashes. Email alone never links external identities. Password-account emails are unique and normalized to lowercase.
 - `workspaces`: owner, personal flag, name, icon, banner, banner position, version, update timestamp. A partial unique index allows one personal workspace per owner.
 - `members`: workspace/email key, registered user ID or pending invitation token, name, initials, color, photo, display order. This is authoritative for authorization.

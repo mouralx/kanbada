@@ -37,9 +37,15 @@ An authenticated caller without access normally receives 404 for workspace/file 
 
 Authentication:
 
-- `GET /auth/session`: current user or null, plus configured provider flags.
-- `POST /auth/register`: `{ "email": "...", "password": "...", "name": "..." }`; creates a personal workspace and session.
-- `POST /auth/login`: email/password; establishes a session.
+- `GET /auth/session`: current user or null, configured provider flags, and `twoFactorSetupRequired` / `twoFactorVerificationRequired` flags for restricted sessions.
+- `POST /auth/register`: `{ "email": "...", "password": "...", "name": "..." }`; creates a personal workspace and a restricted setup session. Returns `twoFactorSetupRequired: true`; workspace access returns 403 until authenticator enrollment is confirmed. New external-provider identities follow the same requirement.
+- `POST /auth/login`: email/password and optional `code`; returns 204 with a session on success. If 2FA is enabled and code is omitted, returns 200 `{ "twoFactorRequired": true }` without a session. Resubmit the credentials with an authenticator or recovery code. Invalid/replayed codes return 400; account lockout returns 429.
+- `GET /auth/two-factor`: authenticated status (`available`, `enabled`, `recoveryCodesRemaining`, `required`, `passwordRequired`).
+- `POST /auth/two-factor/setup`: authenticated `{ "password": "..." }`; returns a private `secret` and `uri` for enrollment, valid for ten minutes.
+- `POST /auth/two-factor/confirm`: authenticated `{ "password": "...", "code": "..." }`; enables protection and returns `{ "codes": [...] }` once.
+- `POST /auth/two-factor/recovery-codes`: same authenticated payload; replaces all recovery codes and returns the new set once.
+- `POST /auth/two-factor/verify`: authenticated `{ "password": "", "code": "..." }`; upgrades the current restricted provider session after authenticator/recovery-code verification (204).
+- `POST /auth/two-factor/disable`: same authenticated payload; disables protection for legacy optional accounts (204); mandatory accounts receive 403. Confirm, regenerate, and disable revoke other sessions.
 - `POST /auth/logout`: revokes the session and clears the cookie.
 - `GET /auth/{provider}/start?returnUrl=/...`: starts Google/Microsoft sign-in.
 - `GET /auth/complete`: application callback after external middleware authentication.

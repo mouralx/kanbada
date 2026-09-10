@@ -1,27 +1,28 @@
+import { enrollApiAccount } from './authenticator-test-helpers.mjs';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
   await page.goto('http://localhost:4173');
-  const metrics = await page.evaluate(async () => {
+  const registration = await page.request.post('http://localhost:4173/api/auth/register', {
+    headers: { 'X-Kanbada-Request': '1' },
+    data: {
+      email: `payload-${Date.now()}@example.test`,
+      name: 'Payload Test',
+      password: 'A-long-payload-test-password',
+    },
+  });
+  assert.equal(registration.status(), 200);
+  const { id } = await registration.json();
+  await enrollApiAccount(page.request, 'A-long-payload-test-password');
+  const metrics = await page.evaluate(async (id) => {
     const { remoteRepository: repository } =
       await import('/src/infrastructure/remoteRepository.ts');
     const { setStorageAccount } = await import('/src/infrastructure/accountStorage.ts');
     const { workspaceChanges, applyChanges, differences } =
       await import('/src/infrastructure/stateChanges.ts');
     const headers = { 'X-Kanbada-Request': '1', 'Content-Type': 'application/json' };
-    const registration = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        email: `payload-${Date.now()}@example.test`,
-        name: 'Payload Test',
-        password: 'A-long-payload-test-password',
-      }),
-    });
-    if (!registration.ok) throw new Error('Registration failed');
-    const { id } = await registration.json();
     setStorageAccount({ id, name: 'Payload Test', email: 'payload@example.test' });
     let state = await repository.load();
     state.workspace.banner = 'data:image/png;base64,' + 'x'.repeat(250000);
@@ -105,7 +106,7 @@ try {
     } finally {
       window.fetch = originalFetch;
     }
-  });
+  }, id);
   const edits = metrics.requests.filter((request) => request.method === 'PATCH');
   assert.equal(edits.length, 1);
   assert.ok(edits[0].bodyBytes < 1000, JSON.stringify(edits[0]));

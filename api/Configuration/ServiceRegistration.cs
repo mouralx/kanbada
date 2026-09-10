@@ -43,6 +43,8 @@ public static class ServiceRegistration
         builder.Services.AddScoped<WorkspaceStore>();
         builder.Services.AddScoped<CardService>();
         builder.Services.AddScoped<Auth>();
+        builder.Services.AddScoped<TwoFactor>();
+        builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<ApiExceptionHandler>();
         builder.Services.AddScoped<SessionEvents>();

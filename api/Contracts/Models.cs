@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 
 namespace Kanbada.Api;
 
-public record Credentials(string Email, string Password, string? Name);
+public record Credentials(string Email, string Password, string? Name, string? Code = null);
 public record WorkspaceInput(string Name);
 public record ShareInput(string Access, int Days);
 public static class Initial

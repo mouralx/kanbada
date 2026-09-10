@@ -17,9 +17,9 @@ public sealed class SessionEvents(KanbadaDbContext db) : CookieAuthenticationEve
         }
 
         var profile = await (from session in db.Sessions
-                             join user in db.Users on session.UserId equals user.Id
+                             join account in db.Users on session.UserId equals account.Id
                              where session.Id == sid && session.ExpiresAt > DateTimeOffset.UtcNow
-                             select user).AsNoTracking().SingleOrDefaultAsync();
+                             select new { User = account, session.TwoFactorVerified }).AsNoTracking().SingleOrDefaultAsync();
         if (profile is null)
         {
             context.RejectPrincipal();
@@ -27,7 +27,9 @@ public sealed class SessionEvents(KanbadaDbContext db) : CookieAuthenticationEve
             return;
         }
 
-        context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, profile.Id.ToString()), new Claim(ClaimTypes.Email, profile.Email), new Claim(ClaimTypes.Name, profile.Name), new Claim("sid", sid) }, "session")));
+        var user = profile.User;
+        var pending = user.TwoFactorSecret == null ? user.TwoFactorRequired : !profile.TwoFactorVerified;
+        context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim(ClaimTypes.Email, user.Email), new Claim(ClaimTypes.Name, user.Name), new Claim("sid", sid), new Claim("two_factor_pending", pending ? "true" : "false"), new Claim("two_factor_setup", user.TwoFactorSecret == null ? "true" : "false") }, "session")));
     }
 
     public override Task RedirectToLogin(RedirectContext<CookieAuthenticationOptions> context)

@@ -1316,6 +1316,35 @@
     color: #cacbd0;
     box-shadow: 0 4px 12px #00000026
 }
+:root[data-theme="dark"] .two-factor-settings {
+    border-top: 1px solid #383b42;
+    color: #a6a8ae
+}
+:root[data-theme="dark"] .two-factor-settings h3 {
+    color: #e5e5e7
+}
+:root[data-theme="dark"] .two-factor-form input {
+    border: 1px solid #383b42;
+    background: #232529;
+    color: #e5e5e7
+}
+:root[data-theme="dark"] .authenticator-setup > svg {
+    background: #232529
+}
+:root[data-theme="dark"] .recovery-codes pre {
+    background: #232529
+}
+:root[data-theme="dark"] .enrollment-card {
+    border: 1px solid #383b42;
+    background: #232529;
+    color: #a6a8ae
+}
+:root[data-theme="dark"] .enrollment-card > .logo {
+    color: #e5e5e7
+}
+:root[data-theme="dark"] .enrollment-card h1 {
+    color: #e5e5e7
+}
 :root[data-theme="dark"]{--line:#383b42;--muted:#a6a8ae;--green:#9aacbf;color-scheme:dark}
 :root[data-theme="dark"] .avatar{color:#26384e}
 :root[data-theme="dark"] .completion-donut>span{background:#232529}

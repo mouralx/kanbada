@@ -29,11 +29,11 @@ Serve `portal/dist` as static files with fallback to `index.html` for frontend n
 
 Use HTTPS externally and ensure the API sees the public host and HTTPS scheme for secure cookies and OAuth redirects. If terminating TLS at a proxy, configure trusted forwarded headers explicitly; do not trust forwarded headers from arbitrary clients. See the source configuration for supported proxy settings.
 
-The `.data-protection` directory under the API content root holds cookie encryption keys. Persist and share this directory when running replicas, protect it using the deployment platform's filesystem/secret controls, and configure a platform-appropriate at-rest protector before production. Deleting keys invalidates existing protected cookies. The local implementation persists keys but does not itself configure certificate/Key Vault encryption.
+The `.data-protection` directory under the API content root holds keys used to encrypt cookies and authenticator secrets. Persist and share this directory when running replicas, protect it using the deployment platform's filesystem/secret controls, and configure a platform-appropriate at-rest protector before production. Deleting keys invalidates existing protected cookies and makes stored authenticator secrets unreadable; recovery codes can still be used to sign in; legacy optional accounts can disable and re-enroll 2FA. Mandatory accounts require an operator-assisted authenticator replacement if encryption keys are lost. The local implementation persists keys but does not itself configure certificate/Key Vault encryption.
 
 Keep PostgreSQL private. The local Compose port is bound to 127.0.0.1. Use TLS and a restricted database role in deployment. Apply EF migrations with a separate migration role before production startup; the runtime role does not need DDL rights. See [database migrations](database.md).
 
-Configure reverse-proxy body limits consistently with the API's 32 MiB request limit and 25 MiB per-file upload limit. Rate limiting is process-local and currently targets authentication; use gateway limits/distributed policy if replicas or abuse volume require it. Review capacity for workspace snapshot response sizes and in-database file storage before scaling.
+Configure reverse-proxy body limits consistently with the API's 32 MiB request limit and 25 MiB per-file upload limit. IP rate limiting is process-local and targets authentication; second-factor verification also has a database-backed account lockout shared across replicas; use gateway limits/distributed policy if replicas or abuse volume require it. Review capacity for workspace snapshot response sizes and in-database file storage before scaling.
 
 ## Health and logs
 
@@ -43,7 +43,7 @@ Scalar `/api/scalar` and `/api/openapi.json` are available in all environments. 
 
 ## Backups
 
-Back up PostgreSQL with the tools and retention policy for your environment. Both relational business records and file bytes are in the database. Retain Data Protection keys separately if sessions need to survive recovery. Test restoration into a separate database, validate schema versions, and check account/card/file access before relying on a backup.
+Back up PostgreSQL with the tools and retention policy for your environment. Both relational business records and file bytes are in the database. Back up Data Protection keys separately and securely: they are required to recover authenticator secrets and existing sessions. Test restoration into a separate database, validate schema versions, and check account/card/file access before relying on a backup.
 
 `docker compose -f api/compose.yaml stop` preserves local data. Do not remove the named database volume to troubleshoot an application bug.
 
@@ -60,3 +60,15 @@ Back up PostgreSQL with the tools and retention policy for your environment. Bot
 - **Scalar can read but cannot write:** sign in on the same origin, include the mutation header, and set `If-Match` for workspace saves. The latest workspace JSON must contain all collections.
 - **Old cards missing after API sign-in:** browser-only data and API accounts are separate stores. No automatic migration/import is performed.
 - **Dark CSS changes disappear:** edit base CSS or `dark-overrides.css`; generated `dark.css` is rebuilt.
+
+## Authenticator-based two-factor authentication
+
+All new password and external-provider accounts must enroll an authenticator during registration before workspace access. Existing accounts retain their optional policy and can enable 2FA under **Profile → Two-factor authentication**. Mandatory accounts cannot disable 2FA. Setup requires the current password for password accounts, a locally rendered QR code (or manual key), and a confirming six-digit TOTP code. External accounts authenticate through their provider instead of confirming a local password. Microsoft Authenticator supports this as an **Other account**. New Google/Microsoft identities also enroll a Kanbada authenticator. Subsequent provider logins require a Kanbada authenticator or recovery code before workspace access. This feature does not add push approvals or link identities by email. Local demo mode does not offer production security settings.
+
+Apply the `AuthenticatorTwoFactor` and `RequireTwoFactorForNewAccounts` EF migrations before starting an updated production API. Development startup applies it automatically. Existing accounts keep their current 2FA configuration. Existing sessions for accounts with an authenticator are re-verified after the mandatory-enrollment migration. No email service is required.
+
+Pending enrollment expires in ten minutes. Codes use SHA-1, six digits and 30-second steps, accepting one adjacent step in either direction for clock skew. Keep server clocks synchronized. A consumed time step cannot be reused; wait for a fresh code after enrollment or another successful verification. Five failed password/code confirmations or second-factor verifications lock that account's second-factor operations for five minutes. API IP rate limits also apply.
+
+Enrollment, recovery-code regeneration, and disabling 2FA revoke other sessions while retaining the session making the change. Ten random, single-use recovery codes are displayed once and can be downloaded; only their user-bound SHA-256 hashes are stored. Regeneration invalidates all previous recovery codes. Regenerating (or disabling for legacy optional accounts) requires the current password for password accounts and an unused authenticator or recovery code. Losing both the authenticator and all recovery codes has no self-service bypass.
+
+Do not log authentication request bodies, QR/setup responses, or recovery-code responses. They are marked `Cache-Control: no-store`. Protect and persist the Data Protection key directory as described above; database encryption of authenticator secrets does not replace securing those keys.

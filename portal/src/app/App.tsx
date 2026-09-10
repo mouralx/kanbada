@@ -579,7 +579,7 @@ export function App() {
               aria-label={t('Your profile')}
               onClick={() => setModal('Profile')}
             >
-              {avatar(currentMember.name, true)}
+              {avatar(currentMember.name)}
             </button>
           </div>
         </header>

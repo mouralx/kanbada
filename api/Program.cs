@@ -10,6 +10,7 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<RequestSecurityMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<TwoFactorEnrollmentMiddleware>();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapGet("/api/health", async (KanbadaDbContext db) =>

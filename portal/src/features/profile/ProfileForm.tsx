@@ -1,3 +1,4 @@
+import { TwoFactorSettings } from './TwoFactorSettings';
 import { Camera, Check, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { Member } from '../../domain/models';
@@ -50,90 +51,93 @@ export function ProfileForm({
     }
   }
   return (
-    <form
-      className="simple-form"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (busy) return;
-        const form = new FormData(e.currentTarget);
-        setBusy(true);
-        try {
-          await onSave(String(form.get('name')).trim(), String(form.get('email')).trim(), photo);
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      <h2>{t('A little about you.')}</h2>
-      <div className="profile-photo-editor">
-        <div className="profile-photo-preview" style={{ background: member.color }}>
-          {photo ? (
-            <img src={photo} alt={t('Profile photo preview')} />
-          ) : (
-            <span>{member.initials}</span>
-          )}
-          <span className="photo-camera">
-            <Camera size={15} />
-          </span>
-        </div>
-        <div>
-          <button
-            type="button"
-            className="secondary photo-select"
-            disabled={busy}
-            onClick={() => input.current?.click()}
-          >
-            <Camera size={15} />
-            {busy ? t('Loading\u2026') : t('Change photo')}
-          </button>
-          <p>{t('JPG, PNG, WebP or GIF \u00B7 up to 2 MB')}</p>
-          {photo && (
+    <>
+      <form
+        className="simple-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (busy) return;
+          const form = new FormData(e.currentTarget);
+          setBusy(true);
+          try {
+            await onSave(String(form.get('name')).trim(), String(form.get('email')).trim(), photo);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <h2>{t('A little about you.')}</h2>
+        <div className="profile-photo-editor">
+          <div className="profile-photo-preview" style={{ background: member.color }}>
+            {photo ? (
+              <img src={photo} alt={t('Profile photo preview')} />
+            ) : (
+              <span>{member.initials}</span>
+            )}
+            <span className="photo-camera">
+              <Camera size={15} />
+            </span>
+          </div>
+          <div>
             <button
               type="button"
-              className="text-button danger"
+              className="secondary photo-select"
               disabled={busy}
-              onClick={() => setPhoto(undefined)}
+              onClick={() => input.current?.click()}
             >
-              <Trash2 size={12} />
-              {t('Remove photo')}
+              <Camera size={15} />
+              {busy ? t('Loading\u2026') : t('Change photo')}
             </button>
-          )}
+            <p>{t('JPG, PNG, WebP or GIF \u00B7 up to 2 MB')}</p>
+            {photo && (
+              <button
+                type="button"
+                className="text-button danger"
+                disabled={busy}
+                onClick={() => setPhoto(undefined)}
+              >
+                <Trash2 size={12} />
+                {t('Remove photo')}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-      <input
-        type="file"
-        ref={input}
-        aria-label={t('Profile picture')}
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        hidden
-        onChange={(e) => void selectPhoto(e.target.files?.[0])}
-      />
-      {error && (
-        <p className="form-error" role="alert">
-          {t(error)}
-        </p>
-      )}
-      <label>
-        {t('Name')}
-        <input name="name" defaultValue={member.name} required pattern=".*\S.*" />
-      </label>
-      <label>
-        {t('Email')}
         <input
-          name="email"
-          type="email"
-          readOnly={apiEnabled}
-          defaultValue={member.email}
-          required
+          type="file"
+          ref={input}
+          aria-label={t('Profile picture')}
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          hidden
+          onChange={(e) => void selectPhoto(e.target.files?.[0])}
         />
-      </label>
-      <button className="primary" disabled={busy}>
-        <Check size={15} />
-        {t('Save profile')}
-      </button>
-      <div className="profile-signout">
-        <LogoutButton />
-      </div>
-    </form>
+        {error && (
+          <p className="form-error" role="alert">
+            {t(error)}
+          </p>
+        )}
+        <label>
+          {t('Name')}
+          <input name="name" defaultValue={member.name} required pattern=".*\S.*" />
+        </label>
+        <label>
+          {t('Email')}
+          <input
+            name="email"
+            type="email"
+            readOnly={apiEnabled}
+            defaultValue={member.email}
+            required
+          />
+        </label>
+        <button className="primary" disabled={busy}>
+          <Check size={15} />
+          {t('Save profile')}
+        </button>
+        <div className="profile-signout">
+          <LogoutButton />
+        </div>
+      </form>
+      {apiEnabled && <TwoFactorSettings />}
+    </>
   );
 }

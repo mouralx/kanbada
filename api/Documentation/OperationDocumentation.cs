@@ -161,6 +161,12 @@ public static class OperationDocumentation
         operation.Responses[example.SuccessCode] = response;
         if (example.SuccessCode != "200") operation.Responses.Remove("200");
 
+        if (example.Path == "/api/auth/login")
+            operation.Responses["200"] = new OpenApiResponse
+            {
+                Description = "Password accepted; a second factor is required. No session is issued. Resubmit credentials with code.",
+                Content = new Dictionary<string, OpenApiMediaType> { ["application/json"] = new() { Example = ApiExamples.Json(new { twoFactorRequired = true }) } }
+            };
         AddProblem(operation, 500, "Unexpected server failure. Contact support with the traceId.");
         if (example.Path.StartsWith("/api/health"))
         {
@@ -173,13 +179,13 @@ public static class OperationDocumentation
             return;
         }
         AddProblem(operation, 400, "Invalid request data or a protected workspace/card invariant was violated.");
-        if (!example.Path.StartsWith("/api/auth") || example.Path.EndsWith("/login") || example.Path.EndsWith("/complete"))
+        if (!example.Path.StartsWith("/api/auth") || example.Path.EndsWith("/login") || example.Path.EndsWith("/complete") || example.Path.StartsWith("/api/auth/two-factor"))
             AddProblem(operation, 401, "Sign in on this origin before requesting this resource.");
         AddProblem(operation, 403, "Request origin rejected, or this account does not have the required permission.");
         if (!example.Path.StartsWith("/api/auth")) AddProblem(operation, 404, "Resource not found, inaccessible, expired, or revoked.");
         if (example.Method is "POST" or "PUT" or "PATCH") AddProblem(operation, 409, "Conflict: duplicate resource, existing membership, or a competing workspace save. Reload and reconcile.");
         if (example.Method is "PUT" or "PATCH") AddProblem(operation, 428, "An If-Match workspace version is required.");
-        if (example.Path is "/api/auth/register" or "/api/auth/login" or "/api/auth/{provider}/start")
+        if (example.Path is "/api/auth/register" or "/api/auth/login" or "/api/auth/{provider}/start" || example.Path.StartsWith("/api/auth/two-factor"))
             AddProblem(operation, 429, "Authentication request limit reached. Wait before trying again.");
         if (example.Path == "/api/auth/{provider}/start") AddProblem(operation, 503, "This sign-in provider has not been configured.");
     }

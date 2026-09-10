@@ -1,3 +1,4 @@
+import { authenticatorCode, enrollApiAccount } from './authenticator-test-helpers.mjs';
 import { chromium, expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 const browser = await chromium.launch();
@@ -21,6 +22,16 @@ try {
   await page.getByLabel('Email address').fill(`browser-${Date.now()}@example.test`);
   await page.getByLabel('Password', { exact: true }).fill('A-long-browser-test-password');
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Secure your account', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Enable two-factor authentication', exact: true }).click();
+  await page.getByLabel('Current password', { exact: true }).fill('A-long-browser-test-password');
+  await page.getByRole('button', { name: 'Set up authenticator', exact: true }).click();
+  const secret = await page.getByLabel('Setup key', { exact: true }).inputValue();
+  await page.getByLabel('Authenticator code', { exact: true }).fill(authenticatorCode(secret));
+  await page.getByRole('button', { name: 'Verify and enable', exact: true }).click();
+  await page.getByRole('button', { name: 'I have saved my codes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'My activities', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Help', exact: true }).click();
   await page.getByLabel('Search help').fill('due date');
@@ -54,6 +65,7 @@ try {
       },
     );
     assert.equal(registration.status(), 200);
+    await enrollApiAccount(memberContext.request, 'A-long-browser-test-password');
     const workspaceResponse = await page.request.post('http://localhost:4173/api/workspaces', {
       headers: { 'X-Kanbada-Request': '1' },
       data: { name: 'Profile collaboration' },
