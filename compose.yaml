@@ -5,44 +5,43 @@ services:
     image: docker.io/library/postgres:17-alpine
     container_name: kanbada-postgres-api
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?Run node scripts/setup-local.mjs first}
-      POSTGRES_DB: ${POSTGRES_DB:?Run node scripts/setup-local.mjs first}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the stack environment}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the stack environment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}
     ports:
       - "127.0.0.1:55432:5432"
     volumes:
       - kanbada-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kanbada -d kanbada"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
       timeout: 3s
       retries: 20
 
   api:
-    build:
-      context: .
-      dockerfile: tools/images/api.Dockerfile
+    image: ghcr.io/mouralx/kanbada-api:latest
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      PortalOrigin: http://localhost:4173
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      PortalOrigin: ${PORTAL_ORIGIN:-http://localhost:4173}
       Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
       Platform__AdminEmails: ${PLATFORM_ADMIN_EMAILS:-}
-      POSTGRES_USER: ${POSTGRES_USER:?Run node scripts/setup-local.mjs first}
-      POSTGRES_DB: ${POSTGRES_DB:?Run node scripts/setup-local.mjs first}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
+      Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
+      Authentication__Microsoft__ClientId: ${MICROSOFT_CLIENT_ID:-}
+      Authentication__Microsoft__ClientSecret: ${MICROSOFT_CLIENT_SECRET:-}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the stack environment}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the stack environment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}
     ports:
       - "127.0.0.1:5180:5180"
     volumes:
-      - ./api/appsettings.Local.json:/app/appsettings.Local.json:ro
       - ./api/.data-protection:/app/.data-protection
     depends_on:
       postgres:
         condition: service_healthy
 
   portal:
-    build:
-      context: .
-      dockerfile: tools/images/portal.Dockerfile
+    image: ghcr.io/mouralx/kanbada-portal:latest
     environment:
       API_PROXY_TARGET: http://api:5180
     ports:
@@ -58,14 +57,12 @@ services:
       retries: 60
 
   worker:
-    build:
-      context: .
-      dockerfile: tools/images/worker.Dockerfile
+    image: ghcr.io/mouralx/kanbada-worker:latest
     environment:
       Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
-      POSTGRES_USER: ${POSTGRES_USER:?Run node scripts/setup-local.mjs first}
-      POSTGRES_DB: ${POSTGRES_DB:?Run node scripts/setup-local.mjs first}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the stack environment}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the stack environment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}
     volumes:
       - ./api/.data-protection:/app/.data-protection
     depends_on:

@@ -190,10 +190,11 @@ next scheduled/manual run; one bad item does not stop the remaining items.
 
 `worker/Kanbada.Worker.csproj` is a separate executable process. It references the
 API assembly for the shared EF model and connector implementation, not HTTP
-endpoints. The root Compose file builds and starts it alongside the API:
+endpoints. Build the local images, then start the root Compose stack:
 
 ```sh
-podman compose up --build --force-recreate -d --wait --wait-timeout 600
+node scripts/build-images.mjs podman
+podman compose up --force-recreate -d --wait --wait-timeout 600
 podman compose logs -f worker
 ```
 

@@ -16,22 +16,28 @@ Configuration loads ASP.NET Core defaults, optional `appsettings.Local.json`, th
 
 Vite listens on port 4173 with `strictPort` enabled: a port conflict fails clearly rather than silently starting on a different origin. Its `/api` proxy defaults to `http://127.0.0.1:5180`; `API_PROXY_TARGET` overrides the target (the root Compose file uses `http://api:5180`). Change both proxy/origin settings deliberately if using different ports. Always open `localhost:4173` for the documented OAuth flow; localhost and 127.0.0.1 are different cookie hosts.
 
-The root `compose.yaml` runs the entire local development solution with
-`podman compose up --build --force-recreate -d --wait --wait-timeout 600` after `node scripts/setup-local.mjs`
-(Docker users can substitute `docker compose`).
-`tools/images/api.Dockerfile` publishes the API into an ASP.NET runtime image;
-`tools/images/portal.Dockerfile` installs portal dependencies and runs the Vite development
-server. Its Compose health check exercises API readiness through the proxy
+The root `compose.yaml` runs the local solution from prebuilt images. Run
+`node scripts/setup-local.mjs`, then `node scripts/build-images.mjs podman`, then
+`podman compose up --force-recreate -d --wait --wait-timeout 600` (Docker users
+can substitute `docker`). `tools/images/api.Dockerfile` builds the API into an
+ASP.NET runtime image; `tools/images/portal.Dockerfile` installs portal
+dependencies and runs the Vite development server. Its Compose health check exercises API readiness through the proxy
 (Podman's default OCI image format does not retain Dockerfile health checks).
-Source and dependencies are baked into the images; rerun the command with
-`--build --force-recreate` after source changes. Build contexts exclude local secrets and build
-outputs. The API mounts `api/appsettings.Local.json` read-only for local settings,
-with the container database connection overriding its host connection.
+Source and dependencies are baked into the images; rerun the image build script
+after source changes. Build contexts exclude local secrets and build outputs.
 API Data Protection keys persist in the host's
 `api/.data-protection` directory. Use `podman compose stop` to stop all services
 without deleting data. To run only PostgreSQL while running the API and portal
 on the host, use `docker compose up -d --wait postgres`. The root Compose file
 uses project `api` and the persistent named PostgreSQL volume.
+
+For a Portainer stack on a remote Docker endpoint, the Compose file uses images
+published to GHCR because Portainer cannot run Compose build steps for remote
+environments. The GitHub Actions workflow publishes them on pushes to `main` and
+version tags. Configure the stack variables `POSTGRES_USER`, `POSTGRES_DB`, and
+`POSTGRES_PASSWORD` in Portainer. Add optional `PORTAL_ORIGIN`, Jira/admin, and
+OAuth variables there as needed. Configure GHCR credentials in Portainer if the
+packages are private, then redeploy with image pulling enabled.
 
 ## Build and deployment
 

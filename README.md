@@ -16,15 +16,17 @@ From the repository root:
 
 ```sh
 node scripts/setup-local.mjs
-podman compose up --build --force-recreate -d --wait --wait-timeout 600
+node scripts/build-images.mjs podman
+podman compose up --force-recreate -d --wait --wait-timeout 600
 ```
 
 Open **[Kanbada](http://localhost:4173)**. Compose starts PostgreSQL, the API
-(with development migrations), the Jira synchronization worker, and the portal development server. Only Node.js
+(with development migrations), the Jira synchronization worker, and the portal development server. Node.js
 and a running container engine with Compose are needed on the host; .NET and
 portal dependencies are installed when building the images. The API uses a
 multi-stage build with an ASP.NET runtime image; the portal image runs Vite.
-After source changes, rerun the command above to rebuild the affected image.
+After source changes, rerun `node scripts/build-images.mjs podman` before restarting
+the stack. Docker users can replace `podman` with `docker`.
 This configuration is for local development, not production.
 
 Stop the solution with `podman compose stop`; inspect logs with
