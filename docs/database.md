@@ -15,6 +15,8 @@ There are no JSON/JSONB business-data columns. JSON remains the HTTP/export form
   `ExpandedPlatformTheme` preserves existing values and adds automatic (null)
   optional colors with default typography (100%) and rounding (8). Platform admin
   account IDs are resolved from server configuration, not exposed in this table.
+  `SeedDefaultPlatformBranding` inserts the built-in Kanbada defaults when the
+  singleton row is absent and preserves any branding already saved.
 
 - `recovery_codes`: user-bound hashes of single-use authenticator recovery codes. Authenticator secrets and pending setup are encrypted in `users`; expiry, replay prevention, and failure-lockout state are stored alongside them. The per-account `two_factor_required` flag was removed by `EnforceTwoFactorForAllAccounts`; enrollment is mandatory for every user. `sessions.two_factor_verified` tracks assurance per session, and unverified/unenrolled sessions are restricted by middleware. Second-factor changes and login session creation serialize on the user row within an EF transaction.
 - `users`, `identities`, `sessions`: accounts, provider subjects, and revocable session hashes. Email alone never links external identities. Password-account emails are unique and normalized to lowercase.
