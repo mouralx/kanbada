@@ -14,7 +14,7 @@ public sealed class SeedDefaultPlatformBranding : Migration
     {
         migrationBuilder.Sql("""
             INSERT INTO platform_branding (
-                id, version, name, logo, primary, accent, light_background, dark_background,
+                id, version, name, logo, "primary", accent, light_background, dark_background,
                 default_theme, light_surface, dark_surface, light_text, dark_text,
                 light_border, dark_border, sidebar_background, sidebar_text,
                 font_family, font_scale, corner_radius, show_name, collapsed_logo
