@@ -2,7 +2,7 @@
 
 ## Local configuration
 
-Run `node scripts/setup-local.mjs` from the root. It writes `api/.postgres.env` and `api/appsettings.Local.json` with restrictive file permissions where supported, without printing or overwriting existing credentials. An example with placeholders is in `api/appsettings.Example.json`.
+Run `node scripts/setup-local.mjs` from the root. It writes `.env` and `api/appsettings.Local.json` with restrictive file permissions where supported, without printing or overwriting existing credentials. An example with placeholders is in `api/appsettings.Example.json`.
 
 Configuration loads ASP.NET Core defaults, optional `appsettings.Local.json`, then environment variables. Environment variables override local JSON. Restart the API after changing local settings.
 
@@ -19,8 +19,8 @@ Vite listens on port 4173 with `strictPort` enabled: a port conflict fails clear
 The root `compose.yaml` runs the entire local development solution with
 `podman compose up --build --force-recreate -d --wait --wait-timeout 600` after `node scripts/setup-local.mjs`
 (Docker users can substitute `docker compose`).
-`api/Dockerfile` publishes the API into an ASP.NET runtime image;
-`portal/Dockerfile` installs portal dependencies and runs the Vite development
+`tools/images/api.Dockerfile` publishes the API into an ASP.NET runtime image;
+`tools/images/portal.Dockerfile` installs portal dependencies and runs the Vite development
 server. Its Compose health check exercises API readiness through the proxy
 (Podman's default OCI image format does not retain Dockerfile health checks).
 Source and dependencies are baked into the images; rerun the command with
@@ -29,9 +29,9 @@ outputs. The API mounts `api/appsettings.Local.json` read-only for local setting
 with the container database connection overriding its host connection.
 API Data Protection keys persist in the host's
 `api/.data-protection` directory. Use `podman compose stop` to stop all services
-without deleting data. The database-only `api/compose.yaml` remains available for
-running the API and portal on the host; both configurations share project `api`
-and the existing PostgreSQL service and volume.
+without deleting data. To run only PostgreSQL while running the API and portal
+on the host, use `docker compose up -d --wait postgres`. The root Compose file
+uses project `api` and the persistent named PostgreSQL volume.
 
 ## Build and deployment
 
@@ -62,7 +62,7 @@ Scalar `/api/scalar` and `/api/openapi.json` are available in all environments. 
 
 Back up PostgreSQL with the tools and retention policy for your environment. Both relational business records and file bytes are in the database. Back up Data Protection keys separately and securely: they are required to recover authenticator secrets and existing sessions. Test restoration into a separate database, validate schema versions, and check account/card/file access before relying on a backup.
 
-`docker compose -f api/compose.yaml stop` preserves local data. Do not remove the named database volume to troubleshoot an application bug.
+`docker compose stop postgres` preserves local data. Do not remove the named database volume to troubleshoot an application bug.
 
 ## Troubleshooting
 

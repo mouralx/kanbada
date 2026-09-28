@@ -29,8 +29,8 @@ This configuration is for local development, not production.
 
 Stop the solution with `podman compose stop`; inspect logs with
 `podman compose logs -f`. Database data and API Data Protection keys persist
-(keys remain in `api/.data-protection` on the host). The database service, Compose
-project name, and named database volume are shared with `api/compose.yaml`.
+(keys remain in `api/.data-protection` on the host). The root Compose file can
+also run PostgreSQL by itself for host development.
 Stop any host API/portal processes before starting the full solution.
 
 ### API and portal on the host
@@ -42,7 +42,7 @@ node scripts/setup-local.mjs
 npm --prefix portal ci
 dotnet tool restore
 dotnet restore api/Kanbada.Api.csproj --locked-mode
-docker compose -f api/compose.yaml up -d --wait
+docker compose up -d --wait postgres
 ```
 
 The setup script generates a random database password and creates ignored local configuration files. It preserves existing configuration. PostgreSQL stores data in a persistent volume.
@@ -81,7 +81,7 @@ The full-solution instructions above use Podman; Docker users can substitute `do
 Press Ctrl+C in the API and portal terminals. Stop PostgreSQL without removing its data:
 
 ```sh
-docker compose -f api/compose.yaml stop
+docker compose stop postgres
 ```
 
 ## Check your changes

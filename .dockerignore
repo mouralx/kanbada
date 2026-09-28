@@ -11,6 +11,6 @@
 **/appsettings.Local.json
 **/.data-protection
 api/tests
-portal
+portal/.dockerignore
 docs
 tools

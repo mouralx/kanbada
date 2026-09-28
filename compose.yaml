@@ -4,7 +4,10 @@ services:
   postgres:
     image: docker.io/library/postgres:17-alpine
     container_name: kanbada-postgres-api
-    env_file: api/.postgres.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Run node scripts/setup-local.mjs first}
+      POSTGRES_DB: ${POSTGRES_DB:?Run node scripts/setup-local.mjs first}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
     ports:
       - "127.0.0.1:55432:5432"
     volumes:
@@ -18,13 +21,15 @@ services:
   api:
     build:
       context: .
-      dockerfile: api/Dockerfile
-    env_file: api/.postgres.env
+      dockerfile: tools/images/api.Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       PortalOrigin: http://localhost:4173
       Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
       Platform__AdminEmails: ${PLATFORM_ADMIN_EMAILS:-}
+      POSTGRES_USER: ${POSTGRES_USER:?Run node scripts/setup-local.mjs first}
+      POSTGRES_DB: ${POSTGRES_DB:?Run node scripts/setup-local.mjs first}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
     ports:
       - "127.0.0.1:5180:5180"
     volumes:
@@ -35,7 +40,9 @@ services:
         condition: service_healthy
 
   portal:
-    build: ./portal
+    build:
+      context: .
+      dockerfile: tools/images/portal.Dockerfile
     environment:
       API_PROXY_TARGET: http://api:5180
     ports:
@@ -53,10 +60,12 @@ services:
   worker:
     build:
       context: .
-      dockerfile: worker/Dockerfile
-    env_file: api/.postgres.env
+      dockerfile: tools/images/worker.Dockerfile
     environment:
       Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
+      POSTGRES_USER: ${POSTGRES_USER:?Run node scripts/setup-local.mjs first}
+      POSTGRES_DB: ${POSTGRES_DB:?Run node scripts/setup-local.mjs first}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
     volumes:
       - ./api/.data-protection:/app/.data-protection
     depends_on:
