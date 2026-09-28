@@ -73,7 +73,7 @@ export function PlatformBrandingProvider({ children }: { children: ReactNode }) 
           headers: etag ? { 'If-None-Match': etag } : {},
         });
         if (!response.ok && response.status !== 304)
-          throw new Error('Could not load platform branding.');
+          throw new Error(`Could not load platform branding (HTTP ${response.status}).`);
         if (response.status !== 304) {
           const value: Branding = await response.json();
           if (active) {
@@ -86,8 +86,10 @@ export function PlatformBrandingProvider({ children }: { children: ReactNode }) 
           setError('');
         }
       } catch (reason) {
-        if (active)
+        if (active) {
           setError(reason instanceof Error ? reason.message : 'Could not load platform branding.');
+          setLoaded(true);
+        }
       }
     };
     void load();
