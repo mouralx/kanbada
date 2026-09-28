@@ -22,7 +22,9 @@ Views receive state and typed callbacks; the workspace shell coordinates changes
 
 ## Backend boundaries
 
-The API is a single deployable assembly with feature folders. Additional assemblies are unnecessary for the current size. The public namespace remains `Kanbada.Api`.
+The API is a deployable assembly with feature folders. The separate
+`worker/Kanbada.Worker.csproj` process references it to share persistence and Jira
+synchronization logic without running HTTP endpoints. The public namespace remains `Kanbada.Api`.
 
 - `Program.cs`: configuration entry point, middleware order, route composition, startup migration.
 - `Configuration/`: dependency injection and validated options.
@@ -35,6 +37,9 @@ The API is a single deployable assembly with feature folders. Additional assembl
 - `Contracts/`: request records, initial workspace factory, JSON contract accessors.
 - `Files/`, `Sharing/`, `Invitations/`: feature-specific transport and permission handling.
 - `Health/`: PostgreSQL readiness check.
+- `Jira/`: owner-authorized project settings, token protection, cron scheduling,
+  Jira REST adapters and per-item synchronization. The worker polls PostgreSQL
+  schedules and claims connections using session advisory locks.
 - `tests/`: API integration tests with isolated database schemas.
 
 Endpoint modules translate HTTP into feature operations. `WorkspaceStore` owns the atomic workspace transaction. Validators and history generation do not know about HTTP or database connections. `WorkspaceMapper` translates the transport contract into tracked entities; `KanbadaDbContext` owns persistence configuration. `WorkspaceResolver` resolves the personal-workspace alias. `WorkspaceMetrics` executes database-side aggregates.

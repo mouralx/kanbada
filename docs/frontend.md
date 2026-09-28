@@ -36,11 +36,26 @@ All main application pages use the full available width, including dashboards, l
 
 The card drawer inherits the modal overlay's background blur. Preserve dialog labels, focus trapping, Escape handling, reduced-motion behavior, keyboard controls, and responsive layouts when changing it. Accessibility regressions need browser verification; linting alone is insufficient.
 
+## Shared controls
+
+Single-choice dropdowns share a theme-colored arrow inset 10px from the edge and
+reserve 34px of right padding and 10px of left text padding. Native selects retain keyboard behavior; forced-color
+mode restores the native arrow. Sidebar contents scroll independently of the
+collapse/expand control so the edge button remains fully clickable.
+The sharing dialog groups permissions and expiry above a separate link panel and
+action bar; Jira read-only indicators stay on the list title row above labels.
+
 ## Translation and Help
 
 `shared/i18n.tsx` provides `useI18n`; `shared/pt-PT.json` contains Portuguese translations. Keep persisted IDs and workflow references independent of translated display text. Custom user content is not machine-translated.
 
-`features/help/helpContent.ts` contains 38 paired EN/PT FAQ entries. The Help view searches accent-insensitively and filters by category. Update both language versions when functionality changes.
+`features/help/helpContent.ts` contains 56 paired EN/PT FAQ entries. The Help view
+searches accent-insensitively and filters by category, including a dedicated Jira
+synchronization category. Coverage includes account enrollment and recovery,
+permissions, platform appearance and SVG logos, assignment notifications, cards,
+workflows, sharing, exports, and Jira setup, mappings, schedules, locks and
+troubleshooting. Update both language versions and the browser coverage when
+functionality changes.
 
 ## Dashboards and exports
 

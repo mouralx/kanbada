@@ -1,0 +1,253 @@
+/* Surface roles and layout rules shared by all platform themes. */
+:root[data-platform-theme] {
+  --ui-text: var(--ui-light-page-text);
+}
+:root[data-platform-theme][data-theme='dark'] {
+  --ui-text: var(--ui-dark-page-text);
+}
+:root[data-platform-theme],
+:root[data-platform-theme]
+  :is(body, .app, .app main, .auth-page, .auth-content, .shared-card-page) {
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+:root[data-platform-theme] :is(.sidebar, .auth-story) {
+  --ui-text: var(--ui-sidebar-text);
+  --ui-panel-text: var(--ui-sidebar-text);
+  --ui-muted: var(--ui-sidebar-muted);
+  --ui-border: var(--ui-sidebar-border);
+  --ui-surface: var(--ui-sidebar-panel);
+  --ui-field: var(--ui-sidebar-panel);
+  --ui-raised: var(--ui-sidebar-panel);
+  --ui-selection: var(--ui-sidebar-panel);
+  --ui-link: var(--ui-sidebar-text);
+  --line: var(--ui-sidebar-border);
+  --muted: var(--ui-sidebar-muted);
+  background: var(--ui-sidebar);
+  color: var(--ui-sidebar-text);
+}
+:root[data-platform-theme]
+  :is(.modal, .popover, .task-card, .topbar, .auth-card, .shared-card-document) {
+  --ui-text: var(--ui-panel-text);
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+:root[data-platform-theme] :is(.jira-modal, .branding-modal) {
+  --jira-surface: var(--ui-surface);
+  --jira-panel: var(--ui-surface);
+  --jira-input: var(--ui-field);
+  --jira-text: var(--ui-panel-text);
+  --jira-muted: var(--ui-muted);
+  --jira-accent: var(--ui-link);
+}
+:root[data-platform-theme] :is(.sidebar nav button.active, .platform-preview-nav > :first-child) {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+:root[data-platform-theme] .sidebar .project-nav button.selected {
+  background: var(--ui-sidebar-panel);
+  color: var(--ui-sidebar-text);
+}
+:root[data-platform-theme] .sidebar .project-nav .project-indicator {
+  background: currentColor;
+}
+:root[data-platform-theme] .view-tabs button.active {
+  background: transparent;
+  color: var(--ui-text);
+}
+:root[data-platform-theme] .view-tabs button.active::after {
+  background: currentColor;
+}
+:root[data-platform-theme] :is(.primary:not(.destructive), .auth-submit) {
+  background: var(--ui-primary);
+  color: var(--ui-on-primary);
+  border-color: var(--ui-primary);
+}
+:root[data-platform-theme]
+  :is(input, select, textarea):not([type='checkbox']):not([type='radio']):not([type='color']) {
+  background-color: var(--ui-field);
+  color: var(--ui-panel-text);
+  border-color: var(--ui-border);
+}
+:root[data-platform-theme] :is(input, textarea)::placeholder {
+  color: var(--ui-muted);
+  opacity: 1;
+}
+:root[data-platform-theme] select:not([multiple]):not([size]) {
+  appearance: none;
+  padding-right: 34px;
+  padding-left: 10px;
+  background-image: var(--ui-select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px 14px;
+}
+@media (forced-colors: active) {
+  :root[data-platform-theme] select:not([multiple]):not([size]) {
+    appearance: auto;
+    background-image: none;
+  }
+}
+:root[data-platform-theme] :is(input[type='checkbox'], input[type='radio']) {
+  accent-color: var(--ui-primary);
+}
+:root[data-platform-theme] :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--ui-link);
+  outline-offset: 3px;
+}
+.modal {
+  max-width: 100%;
+  max-height: calc(100dvh - 32px);
+  overscroll-behavior: contain;
+  scroll-padding-block: 80px 100px;
+}
+.modal-heading {
+  gap: 10px;
+}
+.modal-heading > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.modal-heading > button {
+  flex-shrink: 0;
+}
+.modal.branding-modal {
+  width: min(1120px, 100%);
+}
+.modal.card-drawer {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  max-height: 100dvh;
+}
+.card-drawer > .modal-heading,
+.card-drawer > .card-tabs {
+  position: static;
+  background: var(--ui-surface);
+}
+.card-drawer > .modal-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+.card-drawer .card-copy-link {
+  margin: 0;
+}
+.card-drawer > :is(form, .card-history) {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 16px;
+}
+.card-drawer > form[hidden],
+.card-drawer > .modal-footer[hidden] {
+  display: none;
+}
+.card-drawer > .modal-footer {
+  position: static;
+  padding: 14px 24px max(14px, env(safe-area-inset-bottom));
+  margin: 0;
+  background: var(--ui-surface);
+  border-top: 1px solid var(--ui-border);
+}
+.card-drawer .task-title-input {
+  background: transparent;
+}
+.jira-status-row {
+  grid-template-columns: minmax(0, 1fr) auto 32px;
+}
+.jira-status-row select,
+.jira-assignee-row select {
+  text-overflow: ellipsis;
+}
+.jira-settings .jira-save-bar {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+.app main,
+.topbar > *,
+.project-header > *,
+.platform-preview-column {
+  min-width: 0;
+}
+.sidebar {
+  overflow: visible;
+}
+.sidebar-scroll {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sidebar-scroll > * {
+  flex-shrink: 0;
+}
+button,
+a,
+summary {
+  touch-action: manipulation;
+}
+@media (min-width: 761px) {
+  :root[data-platform-theme] .profile-layout-security > .two-factor-settings {
+    border-top: 0;
+  }
+}
+@media (max-width: 900px) {
+  .platform-settings-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .modal-overlay:not(.card-drawer-overlay) {
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+  }
+  .modal {
+    max-height: calc(100dvh - 16px);
+  }
+  .card-drawer > .modal-heading {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    padding: 12px 16px;
+  }
+  .card-drawer > .modal-heading > span {
+    grid-column: 1 / 3;
+  }
+  .card-drawer > .modal-heading > .icon-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .card-drawer .card-share-link {
+    grid-column: 1;
+    justify-self: start;
+  }
+  .card-drawer .card-copy-link {
+    grid-column: 2 / 4;
+    justify-self: end;
+  }
+  .card-drawer > .modal-footer {
+    padding-inline: 16px;
+  }
+  .jira-settings {
+    padding-inline: 14px;
+  }
+  .jira-settings .jira-save-bar {
+    margin-inline: -14px;
+    padding-inline: 14px;
+  }
+  .jira-section {
+    padding: 14px;
+  }
+  .jira-intro h2 {
+    font-size: calc(20px * var(--ui-font-scale));
+  }
+  .platform-colors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .platform-logo-editor {
+    align-items: flex-start;
+  }
+  .task-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

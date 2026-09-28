@@ -19,9 +19,12 @@ app.MapGet("/api/health", async (KanbadaDbContext db) =>
     return Results.Ok(new { status = "healthy", database = "PostgreSQL" });
 }).WithTags("Health");
 AuthenticationEndpoints.Map(app, providers);
+PlatformBranding.Map(app);
 var api = app.MapGroup("/api").RequireAuthorization();
 WorkspaceEndpoints.Map(api);
 CardEndpoints.Map(api);
+JiraEndpoints.Map(api);
+JiraHostApproval.Map(api);
 FileEndpoints.Map(api);
 ShareEndpoints.Map(api);
 InvitationEndpoints.Map(api);
@@ -37,6 +40,7 @@ await using (var scope = app.Services.CreateAsyncScope())
         await scope.ServiceProvider.GetRequiredService<DatabaseMigrator>().Initialize();
     else if ((await scope.ServiceProvider.GetRequiredService<KanbadaDbContext>().Database.GetPendingMigrationsAsync()).Any())
         throw new InvalidOperationException("Database migrations are pending. Apply them with dotnet ef database update before starting the API.");
+    await app.Services.GetRequiredService<PlatformAdmins>().Initialize(app.Configuration, scope.ServiceProvider.GetRequiredService<KanbadaDbContext>());
 }
 app.Run();
 public partial class Program;

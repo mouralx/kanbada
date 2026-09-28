@@ -6,10 +6,12 @@ export function Attachments({
   items,
   onChange,
   onBusy,
+  readOnly = false,
 }: {
   items: Attachment[];
   onChange: (items: Attachment[]) => void;
   onBusy: (busy: boolean) => void;
+  readOnly?: boolean;
 }) {
   const { t } = useI18n();
   const input = useRef<HTMLInputElement>(null);
@@ -23,7 +25,7 @@ export function Attachments({
     };
   }, []);
   async function upload(files: FileList | null) {
-    if (!files?.length || busy) return;
+    if (!files?.length || busy || readOnly) return;
     setError('');
     setBusy(true);
     onBusy(true);
@@ -62,13 +64,14 @@ export function Attachments({
         type="file"
         multiple
         aria-label={t('Attach documents')}
+        disabled={readOnly}
         onChange={(e) => void upload(e.target.files)}
         hidden
       />
       <button
         type="button"
         className="upload-zone"
-        disabled={busy}
+        disabled={busy || readOnly}
         onClick={() => input.current?.click()}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -106,10 +109,12 @@ export function Attachments({
           </button>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || readOnly}
             className="icon-button danger"
             aria-label={t('Remove attachment {0}', a.name)}
-            onClick={() => onChange(items.filter((item) => item.id !== a.id))}
+            onClick={() => {
+              if (!readOnly) onChange(items.filter((item) => item.id !== a.id));
+            }}
           >
             <Trash2 size={15} />
           </button>

@@ -9,6 +9,8 @@ Read [the root README](../README.md) first to run Kanbada.
 5. [Authentication and authorization](authentication.md): sessions, external providers, membership, sharing, and request security.
 6. [Configuration and operations](operations.md): configuration, deployment, backups, diagnostics, and troubleshooting.
 7. [Testing and contribution standards](testing.md): repeatable checks, meaningful coverage, and coding conventions.
+8. [Jira synchronization](jira.md): project connections, credentials, mappings, directions, cron schedules, worker deployment and recovery.
+9. [Platform branding](branding.md): administrator configuration, platform name/logo, colors, theme defaults and live preview.
 
 Documentation describes the implementation in this repository. Source files and the generated OpenAPI document are the executable contract; update the relevant document whenever behavior changes.
 

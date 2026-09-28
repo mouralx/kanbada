@@ -10,6 +10,31 @@ Kanbada brings workspaces, projects, Kanban boards, cards, files, and dashboards
 
 ## Start locally
 
+### Entire solution with Compose
+
+From the repository root:
+
+```sh
+node scripts/setup-local.mjs
+podman compose up --build --force-recreate -d --wait --wait-timeout 600
+```
+
+Open **[Kanbada](http://localhost:4173)**. Compose starts PostgreSQL, the API
+(with development migrations), the Jira synchronization worker, and the portal development server. Only Node.js
+and a running container engine with Compose are needed on the host; .NET and
+portal dependencies are installed when building the images. The API uses a
+multi-stage build with an ASP.NET runtime image; the portal image runs Vite.
+After source changes, rerun the command above to rebuild the affected image.
+This configuration is for local development, not production.
+
+Stop the solution with `podman compose stop`; inspect logs with
+`podman compose logs -f`. Database data and API Data Protection keys persist
+(keys remain in `api/.data-protection` on the host). The database service, Compose
+project name, and named database volume are shared with `api/compose.yaml`.
+Stop any host API/portal processes before starting the full solution.
+
+### API and portal on the host
+
 Run the following from the repository root:
 
 ```sh
@@ -49,7 +74,7 @@ Google and Microsoft sign-in become available after configuring application cred
 
 ### Podman
 
-Replace `docker compose` with `podman compose`. On macOS, run `podman machine start` first. If a `kanbada-postgres-api` container already exists from an earlier setup, start it with `podman start kanbada-postgres-api` rather than creating a second container with the same name. See [troubleshooting](docs/operations.md#troubleshooting).
+The full-solution instructions above use Podman; Docker users can substitute `docker compose`. For the host-development instructions, replace `docker compose` with `podman compose`. On macOS, run `podman machine start` first if the machine is stopped. If a manually created `kanbada-postgres-api` container already exists from an earlier setup, resolve the name conflict before starting Compose; do not delete its database volume. See [troubleshooting](docs/operations.md#troubleshooting).
 
 ### Stop
 
@@ -83,10 +108,20 @@ API tests create and remove isolated schemas. Browser tests create uniquely name
 
 ## Developer documentation
 
+Platform administrators can customize the instance name, logo, colors and default
+theme in **Settings → Platform appearance**. Configure existing administrator
+accounts with `PLATFORM_ADMIN_EMAILS`; see [platform branding](docs/branding.md).
+
+Project owners can configure **Project options → Jira synchronization** for Jira
+Cloud or Data Center, one-way or bidirectional synchronization, and cron schedules.
+See the [Jira setup and worker guide](docs/jira.md) for host approval, field mappings,
+conflict rules and deployment requirements.
+
 Start with the [documentation index](docs/README.md) for architecture, source ownership, API contracts, database migrations, authentication, deployment, and contribution guidance.
 
 - `portal/`: frontend source and browser checks.
 - `api/`: backend source, migrations, and integration tests.
+- `worker/`: independently deployed Jira synchronization process.
 - `docs/`: technical documentation.
 - `scripts/`: repository setup utilities.
 

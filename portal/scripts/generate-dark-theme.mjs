@@ -1,6 +1,7 @@
 // Derive dark variants for declared colors; keep imagery and inline user colors intact.
 import postcss from 'postcss';
 import { readFileSync, writeFileSync } from 'node:fs';
+import './generate-platform-theme.mjs';
 const source = postcss.parse(readFileSync('src/styles/styles.css', 'utf8'));
 const root = postcss.root();
 function recolor(value, property) {

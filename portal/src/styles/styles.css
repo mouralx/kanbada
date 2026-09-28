@@ -1213,6 +1213,7 @@ h1 .title-dot:last-child {
 }
 .popover select,
 .simple-form input,
+.simple-form select,
 .simple-form textarea,
 .task-fields input,
 .task-fields select {
@@ -4050,8 +4051,25 @@ button:disabled {
 }
 .list-row > span:first-child {
   min-width: 0;
+  align-items: flex-start;
 }
-.list-row .list-task-content > b {
+.list-row > span:first-child > .status-icon {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.list-task-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.list-task-lock {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ui-muted);
+}
+.list-task-title > b {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 .list-row .card-labels {
@@ -4774,6 +4792,7 @@ button:disabled {
   display: none;
 }
 .theme-control {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -4781,7 +4800,8 @@ button:disabled {
   font-size: 12px;
 }
 .theme-control select {
-  padding: 8px 25px 8px 10px;
+  appearance: none;
+  padding: 8px 30px 8px 10px;
   border: 1px solid #d7e2ef;
   background: #f7fafd;
   border-radius: 6px;
@@ -4792,8 +4812,7 @@ button:disabled {
   font-size: 10px;
 }
 .theme-compact select {
-  padding: 6px 3px;
-  max-width: 82px;
+  padding: 6px 30px 6px 10px;
 }
 .simple-form .theme-control {
   flex-direction: row;
@@ -4817,7 +4836,6 @@ button:disabled {
     display: none;
   }
   .theme-compact select {
-    max-width: 66px;
     font-size: 9px;
   }
   .auth-content > .theme-control {
@@ -4921,7 +4939,84 @@ button:disabled {
   width: 54px;
   height: 54px;
   border-radius: 14px;
-  margin-bottom: 20px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.share-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.share-intro h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+.share-intro p {
+  margin: 0;
+}
+.share-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.share-settings > label {
+  min-width: 0;
+}
+.share-link-panel {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-field);
+  padding: 16px;
+  margin-top: 8px;
+}
+.share-link-panel p {
+  margin: 8px 0 0;
+}
+.share-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin: 24px -25px -25px;
+  padding: 16px 25px;
+  border-top: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+}
+.share-footer .share-actions {
+  order: -1;
+  flex: 1;
+  margin: 0;
+}
+.share-footer .secondary {
+  width: auto;
+  display: inline-flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: var(--ui-field);
+}
+.share-footer .primary,
+.share-footer .danger {
+  white-space: normal;
+}
+.modal.share-modal {
+  width: min(620px, 100%);
+}
+@media (max-width: 600px) {
+  .share-settings {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .share-footer .share-actions,
+  .share-footer .primary {
+    flex-basis: 100%;
+  }
 }
 .share-access-note {
   display: flex;
@@ -5075,6 +5170,29 @@ button:disabled {
   border: 1px solid #dbe5f1;
   border-radius: 8px;
   color: #6885a8;
+}
+.card-edit-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.card-read-only-notice {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.card-jira-link {
+  text-decoration: none;
+}
+.card-jira-link:hover {
+  filter: brightness(0.95);
+}
+.card-jira-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 .card-project-association small {
   display: block;
@@ -5314,9 +5432,16 @@ button:disabled {
 }
 .two-factor-settings h3 {
   color: #283a51;
+  font-family: Manrope, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
+  margin: 0 0 12px;
 }
 .two-factor-settings p {
   line-height: 1.6;
+  margin: 0 0 14px;
 }
 .two-factor-form label {
   display: flex;

@@ -8,6 +8,7 @@ namespace Kanbada.Api;
 public sealed class WorkspaceMapper(KanbadaDbContext db)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private HashSet<string> readOnlyCardIds = [];
     private static JsonObject Json(object value) => JsonSerializer.SerializeToNode(value, JsonOptions)!.AsObject();
     private static JsonArray Array<T>(IEnumerable<T> values) => new(values.Select(x => JsonSerializer.SerializeToNode(x, JsonOptions)).ToArray());
     private static string Text(JsonNode? value, string key) => WorkspaceJson.Text(value, key);
@@ -16,6 +17,7 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
 
     public async Task Load(Guid id)
     {
+        readOnlyCardIds = (await JiraCardPolicy.ReadOnlyCardIds(db, id).ToListAsync()).ToHashSet();
         await db.Set<MemberEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<ProjectEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<StatusEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
@@ -71,10 +73,17 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
             ["labels"] = Array(Rows<LabelEntity>().OrderBy(x => x.Position).Select(x => new { x.Id, x.Name, x.Color, x.Complete })),
             ["swimlanes"] = Array(Rows<SwimlaneEntity>().OrderBy(x => x.Position).Select(x => new { x.Id, x.Name, x.Color, x.Complete, project = x.ProjectId })),
             ["activity"] = Array(Rows<ActivityEntity>().OrderBy(x => x.Position).Select(x => x.Text)),
-            ["notifications"] = Array(Rows<NotificationEntity>().OrderBy(x => x.Position).Select(x => new { x.Id, x.Message, x.At })),
+            ["notifications"] = new JsonArray(Rows<NotificationEntity>().Where(x => x.RecipientId is null || x.RecipientId == user)
+                .OrderBy(x => x.Position).Select(x =>
+                {
+                    var notification = Json(new { x.Id, x.Message, x.At });
+                    if (x.CardId is not null) notification["cardId"] = x.CardId;
+                    return (JsonNode)notification;
+                }).ToArray()),
             ["tasks"] = new JsonArray(Rows<CardEntity>().OrderBy(x => x.Position).Select(card => (JsonNode)new JsonObject
             {
                 ["id"] = card.Id,
+                ["readOnly"] = readOnlyCardIds.Contains(card.Id),
                 ["project"] = card.ProjectId,
                 ["title"] = card.Title,
                 ["description"] = card.Description,
@@ -127,16 +136,40 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
         finally { db.ChangeTracker.AutoDetectChangesEnabled = detectChanges; }
     }
 
-    public void Apply(Guid id, JsonObject state)
+    private void SyncNotifications(Guid workspace, JsonArray incoming, Guid? user)
+    {
+        var personal = db.Notifications.Local.Where(n => n.WorkspaceId == workspace && n.RecipientId != null)
+            .ToDictionary(n => n.Id);
+        foreach (var item in incoming)
+        {
+            var id = Text(item, "id");
+            if (personal.TryGetValue(id, out var notification))
+            {
+                if (notification.RecipientId != user)
+                    throw new ApiError(403, "You cannot change another member's notifications.");
+                if (Text(item, "message") != notification.Message || Text(item, "at") != notification.At
+                    || Optional(item, "cardId") != notification.CardId)
+                    throw new ApiError(400, "Assignment notifications can only be dismissed.");
+            }
+            else if (id.StartsWith("assignment-", StringComparison.Ordinal) || Optional(item, "cardId") is not null)
+                throw new ApiError(400, "Assignment notifications are created by the server.");
+        }
+        var retained = incoming.Select(n => Text(n, "id")).ToHashSet();
+        Sync(workspace, incoming.Where(n => !personal.ContainsKey(Text(n, "id"))).Select((x, position) =>
+            new NotificationEntity { WorkspaceId = workspace, Position = position, Id = Text(x, "id"), Message = Text(x, "message"), At = Text(x, "at") })
+            .Concat(personal.Values.Where(n => n.RecipientId != user || retained.Contains(n.Id))));
+    }
+
+    public void Apply(Guid id, JsonObject state, Guid? user = null)
     {
         // SetValues marks changed properties itself. Defer the graph scan until SaveChangesAsync.
         var detectChanges = db.ChangeTracker.AutoDetectChangesEnabled;
         db.ChangeTracker.AutoDetectChangesEnabled = false;
-        try { ApplyCore(id, state); }
+        try { ApplyCore(id, state, user); }
         finally { db.ChangeTracker.AutoDetectChangesEnabled = detectChanges; }
     }
 
-    private void ApplyCore(Guid id, JsonObject state)
+    private void ApplyCore(Guid id, JsonObject state, Guid? user)
     {
         var workspace = db.Workspaces.Local.Single(x => x.Id == id);
         workspace.Name = Text(state["workspace"], "name");
@@ -150,7 +183,7 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
         Sync(id, WorkspaceJson.Items(state, "labels").Select((x, position) => new LabelEntity { WorkspaceId = id, Position = position, Id = Text(x, "id"), Name = Text(x, "name"), Color = Text(x, "color"), Complete = Flag(x, "complete") }));
         Sync(id, WorkspaceJson.Items(state, "swimlanes").Select((x, position) => new SwimlaneEntity { WorkspaceId = id, Position = position, Id = Text(x, "id"), ProjectId = Text(x, "project"), Name = Text(x, "name"), Color = Text(x, "color"), Complete = Flag(x, "complete") }));
         Sync(id, WorkspaceJson.Items(state, "activity").Select((x, position) => new ActivityEntity { WorkspaceId = id, Position = position, Text = x!.GetValue<string>() }));
-        Sync(id, WorkspaceJson.Items(state, "notifications").Select((x, position) => new NotificationEntity { WorkspaceId = id, Position = position, Id = Text(x, "id"), Message = Text(x, "message"), At = Text(x, "at") }));
+        SyncNotifications(id, WorkspaceJson.Items(state, "notifications"), user);
         string Definition(string collection, string name) => Text(WorkspaceJson.Items(state, collection).Single(x => Text(x, "name") == name), "id");
         var cards = WorkspaceJson.Items(state, "tasks");
         Sync(id, cards.Select((x, position) => new CardEntity

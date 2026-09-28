@@ -12,6 +12,9 @@ import { WorkspaceAppearance } from '../features/workspaces/WorkspaceAppearance'
 import { WorkspaceSwitcher } from '../features/workspaces/WorkspaceSwitcher';
 import { repository } from '../infrastructure/workspaceRepository';
 import { ThemeSelect } from '../shared/Theme';
+import { JiraSettings } from '../features/projects/JiraSettings';
+import { apiEnabled } from '../infrastructure/apiClient';
+import { PlatformSettings, PlatformSettingsButton } from '../features/workspaces/PlatformSettings';
 
 type WorkspaceDialogsProps = {
   modal: string | null;
@@ -65,7 +68,7 @@ export function WorkspaceDialogs({
           role="dialog"
           aria-modal="true"
           aria-label={t(modal)}
-          className={`modal ${modal === 'Profile' ? 'profile-modal' : ''}`}
+          className={`modal ${modal === 'Profile' ? 'profile-modal' : modal === 'Share card' ? 'share-modal' : modal === 'Jira synchronization' ? 'jira-modal' : modal === 'Platform appearance' ? 'jira-modal branding-modal' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="modal-heading">
@@ -128,6 +131,16 @@ export function WorkspaceDialogs({
                 </button>
               </div>
             </div>
+          ) : modal === 'Jira synchronization' && apiEnabled && data.workspace.canManage ? (
+            <JiraSettings
+              key={`${data.workspace.id}-${project.id}`}
+              workspaceId={data.workspace.id}
+              project={project}
+              statuses={data.statuses}
+              members={data.members}
+            />
+          ) : modal === 'Platform appearance' && apiEnabled ? (
+            <PlatformSettings />
           ) : modal === 'Notifications' ? (
             <Notifications
               items={data.notifications}
@@ -468,6 +481,7 @@ export function WorkspaceDialogs({
               </div>
               <p>{t('Manage your workspace, members, and preferences.')}</p>
               <ThemeSelect />
+              <PlatformSettingsButton onOpen={() => setModal('Platform appearance')} />
               <button className="secondary" onClick={() => setModal('Workspace appearance')}>
                 <Sparkles size={16} />
                 {t('Workspace appearance')}

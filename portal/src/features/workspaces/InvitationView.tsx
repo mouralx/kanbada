@@ -3,6 +3,7 @@ import { apiRequest } from '../../infrastructure/apiClient';
 import { remoteRepository } from '../../infrastructure/remoteRepository';
 import { useI18n } from '../../shared/i18n';
 import { LogoutButton } from '../auth/AuthBoundary';
+import { Brand } from '../../shared/Brand';
 export function InvitationView({ token }: { token: string }) {
   const { t } = useI18n();
   const [invite, setInvite] = useState<{ workspace: string; email: string } | null>(null);
@@ -16,7 +17,9 @@ export function InvitationView({ token }: { token: string }) {
   return (
     <div className="shared-card-page">
       <header>
-        <a href="/">kanbada</a>
+        <a href="/">
+          <Brand />
+        </a>
         <LogoutButton />
       </header>
       <section className="shared-card-document">

@@ -5,6 +5,7 @@ import {
   Flag,
   Folder,
   MessageSquare,
+  LockKeyhole,
   MoreHorizontal,
 } from 'lucide-react';
 import React from 'react';
@@ -27,8 +28,12 @@ export function BoardCard({ task, isDone, setDraft, t, data, locale, avatar }: B
     <article
       key={task.id}
       className={`task-card ${isDone(task) ? 'completed' : ''}`}
-      draggable
+      draggable={!task.readOnly}
       onDragStart={(e) => {
+        if (task.readOnly) {
+          e.preventDefault();
+          return;
+        }
         e.dataTransfer.setData('text/plain', task.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
@@ -101,6 +106,11 @@ export function BoardCard({ task, isDone, setDraft, t, data, locale, avatar }: B
       )}
       <div className="card-top">
         <CardLabels names={task.labels} definitions={data.labels} />
+        {task.readOnly && (
+          <span title={t('Managed by Jira')} aria-label={t('Managed by Jira')}>
+            <LockKeyhole size={14} />
+          </span>
+        )}
         <span className="card-ellipsis">
           <MoreHorizontal size={16} />
         </span>

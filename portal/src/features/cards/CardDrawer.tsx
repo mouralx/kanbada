@@ -6,6 +6,7 @@ import { fileRepository } from '../../infrastructure/attachments';
 import { useI18n } from '../../shared/i18n';
 import { Attachments } from './CardAttachments';
 import { CardLabels } from './CardLabels';
+import { CardJiraLinks } from './CardJiraLinks';
 
 type CardDrawerProps = {
   data: State;
@@ -44,6 +45,7 @@ export function CardDrawer({
   const [cardTab, setCardTab] = useState('Details');
   const [comment, setComment] = useState('');
   const statuses = data.statuses.map((status) => status.name);
+  const readOnly = data.tasks.find((task) => task.id === draft.id)?.readOnly ?? false;
   return (
     <div className="modal-overlay card-drawer-overlay" onClick={closeDraft}>
       <section
@@ -157,7 +159,8 @@ export function CardDrawer({
           aria-labelledby="card-tab-Details"
           onSubmit={(e) => {
             e.preventDefault();
-            if (draft.title.trim()) updateTask({ ...draft, title: draft.title.trim() });
+            if (!readOnly && draft.title.trim())
+              updateTask({ ...draft, title: draft.title.trim() });
           }}
         >
           <div className="card-project-association" role="group" aria-label={t('Project')}>
@@ -178,208 +181,223 @@ export function CardDrawer({
               </strong>
             </span>
           </div>
-          <input
-            className="task-title-input"
-            placeholder={t('Give your idea a name\u2026')}
-            aria-label={t('Task title')}
-            required
-            value={draft.title}
-            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-            autoFocus
-          />
-          <div className="task-fields">
-            <label>
-              {t('Status')}
-              <select
-                aria-label={t('Status')}
-                value={draft.status}
-                onChange={(e) => setDraft({ ...draft, status: e.target.value as Status })}
-              >
-                {statuses.map((s) => (
-                  <option key={s} value={s}>
-                    {t(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t('Priority')}
-              <select
-                aria-label={t('Priority')}
-                value={draft.priority}
-                onChange={(e) => setDraft({ ...draft, priority: e.target.value })}
-              >
-                {['Low', 'Medium', 'High'].map((s) => (
-                  <option key={s} value={s}>
-                    {t(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <fieldset className="assignee-picker">
-              <legend>{t('Assignees')}</legend>
-              {data.members.map((m) => (
-                <label key={m.name}>
-                  <input
-                    type="checkbox"
-                    aria-label={t('Assign {0}', m.name)}
-                    checked={draft.assignees.includes(m.name)}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        assignees: e.target.checked
-                          ? [...draft.assignees, m.name]
-                          : draft.assignees.filter((name) => name !== m.name),
-                      })
-                    }
-                  />
-                  {avatar(m.name, true)}
-                  <span>{m.name}</span>
-                </label>
-              ))}
-            </fieldset>
-            <label>
-              {t('Due date')}
-              <input
-                type="date"
-                value={draft.due}
-                onChange={(e) => setDraft({ ...draft, due: e.target.value })}
-              />
-            </label>
-            <label>
-              {t('Swimlane')}
-              <select
-                aria-label={t('Card swimlane')}
-                value={draft.swimlane ?? ''}
-                onChange={(e) => setDraft({ ...draft, swimlane: e.target.value })}
-              >
-                <option value="">{t('No swimlane')}</option>
-                {data.swimlanes
-                  .filter((lane) => lane.project === draft.project)
-                  .map((lane) => (
-                    <option key={lane.id} value={lane.name}>
-                      {lane.name}
+          {data.tasks.some((task) => task.id === draft.id) && (
+            <CardJiraLinks
+              key={`${data.workspace.id}/${draft.id}`}
+              workspace={data.workspace.id}
+              card={draft.id}
+            />
+          )}
+          {readOnly && (
+            <p className="card-read-only-notice" role="note">
+              {t('This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.')}
+            </p>
+          )}
+          <fieldset className="card-edit-fields" disabled={readOnly}>
+            <input
+              className="task-title-input"
+              placeholder={t('Give your idea a name\u2026')}
+              aria-label={t('Task title')}
+              required
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              autoFocus={window.matchMedia('(min-width: 761px)').matches}
+            />
+            <div className="task-fields">
+              <label>
+                {t('Status')}
+                <select
+                  aria-label={t('Status')}
+                  value={draft.status}
+                  onChange={(e) => setDraft({ ...draft, status: e.target.value as Status })}
+                >
+                  {statuses.map((s) => (
+                    <option key={s} value={s}>
+                      {t(s)}
                     </option>
                   ))}
-              </select>
-            </label>
-            <label>
-              {t('Bucket')}
-              <select
-                aria-label={t('Card bucket')}
-                value={draft.bucket ?? ''}
-                onChange={(e) => setDraft({ ...draft, bucket: e.target.value })}
-              >
-                <option value="">{t('No bucket')}</option>
-                {data.buckets.map((b) => (
-                  <option key={b.id} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <fieldset className="label-picker">
-              <legend>{t('Labels')}</legend>
-              <div className="label-picker-heading">
-                <span>{t('Choose one or more labels')}</span>
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => setModal('Manage labels')}
+                </select>
+              </label>
+              <label>
+                {t('Priority')}
+                <select
+                  aria-label={t('Priority')}
+                  value={draft.priority}
+                  onChange={(e) => setDraft({ ...draft, priority: e.target.value })}
                 >
-                  <Tag size={13} />
-                  {t('Manage labels')}
-                </button>
-              </div>
-              <CardLabels names={draft.labels} definitions={data.labels} />
-              {!draft.labels.length && <p className="no-labels">{t('No labels selected')}</p>}
-              <div className="label-choices">
-                {data.labels.map((label) => (
-                  <label key={label.id}>
+                  {['Low', 'Medium', 'High'].map((s) => (
+                    <option key={s} value={s}>
+                      {t(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <fieldset className="assignee-picker">
+                <legend>{t('Assignees')}</legend>
+                {data.members.map((m) => (
+                  <label key={m.name}>
                     <input
                       type="checkbox"
-                      aria-label={t('Apply label {0}', label.name)}
-                      checked={draft.labels.includes(label.name)}
+                      aria-label={t('Assign {0}', m.name)}
+                      checked={draft.assignees.includes(m.name)}
                       onChange={(e) =>
                         setDraft({
                           ...draft,
-                          labels: e.target.checked
-                            ? [...draft.labels, label.name]
-                            : draft.labels.filter((name) => name !== label.name),
+                          assignees: e.target.checked
+                            ? [...draft.assignees, m.name]
+                            : draft.assignees.filter((name) => name !== m.name),
                         })
                       }
                     />
-                    <CardLabels names={[label.name]} definitions={data.labels} />
+                    {avatar(m.name, true)}
+                    <span>{m.name}</span>
                   </label>
                 ))}
-              </div>
-              {!data.labels.length && (
-                <p className="no-labels">{t('Create your first label with Manage labels.')}</p>
-              )}
-            </fieldset>
-          </div>
-          <label className="description-label">
-            {t('Description')}
-            <textarea
-              placeholder={t('A little context goes a long way\u2026')}
-              value={draft.description}
-              onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-            />
-          </label>
-          <div className="checklist-heading">
-            <h4>{t('Checklist')}</h4>
-            <span>
-              {draft.checklist.filter((c) => c.done).length}/{draft.checklist.length}
-            </span>
-          </div>
-          {draft.checklist.map((c, i) => (
-            <div className="checklist-item" key={i}>
-              <input
-                type="checkbox"
-                checked={c.done}
-                aria-label={c.text}
-                onChange={() =>
-                  setDraft({
-                    ...draft,
-                    checklist: draft.checklist.map((x, j) =>
-                      i === j ? { ...x, done: !x.done } : x,
-                    ),
-                  })
-                }
-              />
-              <span className={c.done ? 'checked' : ''}>{c.text}</span>
-              <button
-                type="button"
-                aria-label={t('Remove {0}', c.text)}
-                onClick={() =>
-                  setDraft({ ...draft, checklist: draft.checklist.filter((_, j) => j !== i) })
-                }
-              >
-                <X size={13} />
-              </button>
+              </fieldset>
+              <label>
+                {t('Due date')}
+                <input
+                  type="date"
+                  value={draft.due}
+                  onChange={(e) => setDraft({ ...draft, due: e.target.value })}
+                />
+              </label>
+              <label>
+                {t('Swimlane')}
+                <select
+                  aria-label={t('Card swimlane')}
+                  value={draft.swimlane ?? ''}
+                  onChange={(e) => setDraft({ ...draft, swimlane: e.target.value })}
+                >
+                  <option value="">{t('No swimlane')}</option>
+                  {data.swimlanes
+                    .filter((lane) => lane.project === draft.project)
+                    .map((lane) => (
+                      <option key={lane.id} value={lane.name}>
+                        {lane.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                {t('Bucket')}
+                <select
+                  aria-label={t('Card bucket')}
+                  value={draft.bucket ?? ''}
+                  onChange={(e) => setDraft({ ...draft, bucket: e.target.value })}
+                >
+                  <option value="">{t('No bucket')}</option>
+                  {data.buckets.map((b) => (
+                    <option key={b.id} value={b.name}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <fieldset className="label-picker">
+                <legend>{t('Labels')}</legend>
+                <div className="label-picker-heading">
+                  <span>{t('Choose one or more labels')}</span>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => setModal('Manage labels')}
+                  >
+                    <Tag size={13} />
+                    {t('Manage labels')}
+                  </button>
+                </div>
+                <CardLabels names={draft.labels} definitions={data.labels} />
+                {!draft.labels.length && <p className="no-labels">{t('No labels selected')}</p>}
+                <div className="label-choices">
+                  {data.labels.map((label) => (
+                    <label key={label.id}>
+                      <input
+                        type="checkbox"
+                        aria-label={t('Apply label {0}', label.name)}
+                        checked={draft.labels.includes(label.name)}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            labels: e.target.checked
+                              ? [...draft.labels, label.name]
+                              : draft.labels.filter((name) => name !== label.name),
+                          })
+                        }
+                      />
+                      <CardLabels names={[label.name]} definitions={data.labels} />
+                    </label>
+                  ))}
+                </div>
+                {!data.labels.length && (
+                  <p className="no-labels">{t('Create your first label with Manage labels.')}</p>
+                )}
+              </fieldset>
             </div>
-          ))}
-          <input
-            className="checklist-add"
-            placeholder={t('+ Add a checklist item, then press Enter')}
-            aria-label={t('New checklist item')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (e.currentTarget.value.trim()) {
-                  setDraft({
-                    ...draft,
-                    checklist: [
-                      ...draft.checklist,
-                      { text: e.currentTarget.value.trim(), done: false },
-                    ],
-                  });
-                  e.currentTarget.value = '';
+            <label className="description-label">
+              {t('Description')}
+              <textarea
+                placeholder={t('A little context goes a long way\u2026')}
+                value={draft.description}
+                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+              />
+            </label>
+            <div className="checklist-heading">
+              <h4>{t('Checklist')}</h4>
+              <span>
+                {draft.checklist.filter((c) => c.done).length}/{draft.checklist.length}
+              </span>
+            </div>
+            {draft.checklist.map((c, i) => (
+              <div className="checklist-item" key={i}>
+                <input
+                  type="checkbox"
+                  checked={c.done}
+                  aria-label={c.text}
+                  onChange={() =>
+                    setDraft({
+                      ...draft,
+                      checklist: draft.checklist.map((x, j) =>
+                        i === j ? { ...x, done: !x.done } : x,
+                      ),
+                    })
+                  }
+                />
+                <span className={c.done ? 'checked' : ''}>{c.text}</span>
+                <button
+                  type="button"
+                  aria-label={t('Remove {0}', c.text)}
+                  onClick={() =>
+                    setDraft({ ...draft, checklist: draft.checklist.filter((_, j) => j !== i) })
+                  }
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+            <input
+              className="checklist-add"
+              placeholder={t('+ Add a checklist item, then press Enter')}
+              aria-label={t('New checklist item')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (e.currentTarget.value.trim()) {
+                    setDraft({
+                      ...draft,
+                      checklist: [
+                        ...draft.checklist,
+                        { text: e.currentTarget.value.trim(), done: false },
+                      ],
+                    });
+                    e.currentTarget.value = '';
+                  }
                 }
-              }
-            }}
-          />
+              }}
+            />
+          </fieldset>
           <Attachments
+            readOnly={readOnly}
             items={draft.attachments ?? []}
             onChange={(attachments) => {
               for (const file of draft.attachments ?? [])
@@ -399,77 +417,85 @@ export function CardDrawer({
               <p>{c}</p>
             </div>
           ))}
-          <div className="comment-input">
-            <input
-              placeholder={t('Share a thought\u2026')}
-              aria-label={t('Comment')}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-            <button
-              type="button"
-              aria-label={t('Add comment')}
-              onClick={() => {
-                if (comment.trim()) {
-                  setDraft({ ...draft, comments: [...draft.comments, comment.trim()] });
-                  setComment('');
-                }
-              }}
-            >
-              <ArrowUpRight size={18} />
-            </button>
-          </div>
-          <div className="modal-footer">
-            <div>
-              {data.tasks.some((t) => t.id === draft.id) && (
-                <>
-                  <button
-                    type="button"
-                    className="icon-button danger"
-                    aria-label={t('Delete task')}
-                    disabled={uploading || saving}
-                    onClick={async () => {
-                      const next = {
-                        ...data,
-                        tasks: data.tasks.filter((t) => t.id !== draft.id),
-                      };
-                      if (await commit(next, 'Task deleted')) {
-                        for (const file of [
-                          ...(draft.attachments ?? []),
-                          ...(data.tasks.find((t) => t.id === draft.id)?.attachments ?? []),
-                        ])
-                          if (!next.tasks.some((t) => t.attachments?.some((a) => a.id === file.id)))
-                            void fileRepository.remove(file.id).catch(() => {});
-                        setDraft(null);
-                      }
-                    }}
-                  >
-                    <Trash2 size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={t('Duplicate task')}
-                    onClick={() =>
-                      updateTask({
-                        ...draft,
-                        id: `KB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-                        history: [],
-                        title: draft.title + ' (copy)',
-                      })
-                    }
-                  >
-                    <Copy size={16} />
-                  </button>
-                </>
-              )}
+          <fieldset className="card-edit-fields" disabled={readOnly}>
+            <div className="comment-input">
+              <input
+                placeholder={t('Share a thought\u2026')}
+                aria-label={t('Comment')}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+              <button
+                type="button"
+                aria-label={t('Add comment')}
+                onClick={() => {
+                  if (comment.trim()) {
+                    setDraft({ ...draft, comments: [...draft.comments, comment.trim()] });
+                    setComment('');
+                  }
+                }}
+              >
+                <ArrowUpRight size={18} />
+              </button>
             </div>
-            <button type="submit" className="primary" disabled={uploading || saving}>
-              <Check size={16} />
-              {uploading ? t('Uploading\u2026') : t('Save task')}
-            </button>
-          </div>
+          </fieldset>
         </form>
+        <div className="modal-footer" hidden={cardTab !== 'Details'}>
+          <div>
+            {data.tasks.some((t) => t.id === draft.id) && (
+              <>
+                <button
+                  type="button"
+                  className="icon-button danger"
+                  aria-label={t('Delete task')}
+                  disabled={readOnly || uploading || saving}
+                  onClick={async () => {
+                    const next = {
+                      ...data,
+                      tasks: data.tasks.filter((t) => t.id !== draft.id),
+                    };
+                    if (await commit(next, 'Task deleted')) {
+                      for (const file of [
+                        ...(draft.attachments ?? []),
+                        ...(data.tasks.find((t) => t.id === draft.id)?.attachments ?? []),
+                      ])
+                        if (!next.tasks.some((t) => t.attachments?.some((a) => a.id === file.id)))
+                          void fileRepository.remove(file.id).catch(() => {});
+                      setDraft(null);
+                    }
+                  }}
+                >
+                  <Trash2 size={17} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={t('Duplicate task')}
+                  disabled={readOnly || uploading || saving}
+                  onClick={() =>
+                    updateTask({
+                      ...draft,
+                      id: `KB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+                      history: [],
+                      title: draft.title + ' (copy)',
+                    })
+                  }
+                >
+                  <Copy size={16} />
+                </button>
+              </>
+            )}
+          </div>
+          <button
+            type="submit"
+            form="card-panel-Details"
+            className="primary"
+            disabled={readOnly || uploading || saving}
+          >
+            <Check size={16} />
+            {uploading ? t('Uploading\u2026') : t('Save task')}
+          </button>
+        </div>
       </section>
     </div>
   );

@@ -14,7 +14,7 @@ public static class ShareEndpoints
             var workspace = await db.WorkspaceId(id, user);
             await store.Read(workspace, user);
             var share = await context.Shares.AsNoTracking().SingleOrDefaultAsync(x => x.WorkspaceId == workspace && x.CardId == cardId.ToUpperInvariant());
-            return share is null ? Results.Json((object?)null) : Results.Ok(new { share.Token, share.Access, share.ExpiresAt, share.CreatedAt, cardId, workspaceId = id, sourcePrefix = "" });
+            return share is null ? Results.Text("null", "application/json") : Results.Ok(new { share.Token, share.Access, share.ExpiresAt, share.CreatedAt, cardId, workspaceId = id, sourcePrefix = "" });
         });
         api.MapPost("/workspaces/{id}/cards/{cardId}/share", async (string id, string cardId, ShareInput input, HttpContext ctx, WorkspaceResolver db, KanbadaDbContext context, WorkspaceStore store) =>
         {

@@ -45,6 +45,9 @@ public static class ServiceRegistration
         builder.Services.AddScoped<Auth>();
         builder.Services.AddScoped<TwoFactor>();
         builder.Services.AddScoped<AccountAvatar>();
+        builder.Services.AddSingleton<PlatformAdmins>();
+        builder.Services.AddScoped<PlatformBranding>();
+        builder.Services.AddJira(builder.Configuration, Path.Combine(builder.Environment.ContentRootPath, ".data-protection"));
         builder.Services.AddHttpClient("gravatar", client => client.Timeout = TimeSpan.FromSeconds(8))
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         builder.Services.AddSingleton(TimeProvider.System);

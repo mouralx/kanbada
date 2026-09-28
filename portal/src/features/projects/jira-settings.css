@@ -1,0 +1,426 @@
+.modal.jira-modal {
+  --jira-surface: #f9fbfd;
+  --jira-panel: #fff;
+  --jira-input: #f7f9fb;
+  --jira-text: #38404b;
+  --jira-muted: #687789;
+  --jira-accent: #516885;
+  width: min(880px, 100%);
+  color: var(--jira-text);
+  background: var(--jira-surface);
+  scrollbar-gutter: stable;
+}
+.jira-modal > .modal-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--jira-surface);
+}
+.jira-settings {
+  padding: 26px 28px 0;
+}
+.jira-intro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.jira-project-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #26384e;
+  flex-shrink: 0;
+}
+.jira-intro > div {
+  min-width: 0;
+}
+.jira-intro h2 {
+  font-family: Manrope, sans-serif;
+  font-size: 23px;
+  letter-spacing: -0.6px;
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+.jira-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+  font-size: 9px;
+  color: var(--jira-muted);
+}
+.jira-badge {
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 5px 10px;
+  font-size: 10px;
+  white-space: nowrap;
+  color: var(--jira-muted);
+}
+.jira-badge.is-enabled {
+  color: var(--jira-accent);
+  background: var(--jira-input);
+}
+.jira-settings p {
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--jira-muted);
+  overflow-wrap: anywhere;
+}
+.jira-intro-copy {
+  margin: 16px 0 10px;
+}
+.jira-help {
+  font-size: 11px;
+  color: var(--jira-muted);
+  margin-bottom: 22px;
+}
+.jira-help summary {
+  cursor: pointer;
+  color: var(--jira-accent);
+}
+.jira-section {
+  min-width: 0;
+  margin: 0 0 22px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--jira-panel);
+}
+.jira-section legend {
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.jira-section legend svg {
+  vertical-align: middle;
+  margin-right: 8px;
+  color: var(--jira-accent);
+}
+.jira-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--jira-muted);
+}
+.jira-settings input:not([type='checkbox']):not([type='radio']),
+.jira-settings select,
+.jira-settings textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 11px;
+  color: var(--jira-text);
+  background: var(--jira-input);
+  font-size: 12px;
+}
+.jira-settings textarea {
+  min-height: 78px;
+  resize: vertical;
+  font-family: ui-monospace, monospace;
+}
+.jira-settings :is(input, select, textarea, button, summary):focus-visible {
+  outline: 2px solid var(--jira-accent);
+  outline-offset: 3px;
+}
+.jira-settings :disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.jira-connection-grid,
+.jira-mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.jira-full {
+  grid-column: 1 / -1;
+}
+.jira-status-group {
+  margin-bottom: 16px;
+}
+.jira-status-group h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+}
+.jira-status-row,
+.jira-assignee-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 28px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.jira-assignee-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px;
+  align-items: end;
+  margin-top: 14px;
+}
+.jira-settings .jira-default-choice,
+.jira-settings .jira-assignee-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+}
+.jira-default-choice input,
+.jira-assignee-toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--jira-accent);
+}
+.jira-add-mapping {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  color: var(--jira-accent);
+  font-size: 11px;
+}
+@media (max-width: 600px) {
+  .jira-assignee-row {
+    grid-template-columns: minmax(0, 1fr) 28px;
+  }
+  .jira-assignee-row > label {
+    grid-column: 1;
+  }
+  .jira-assignee-row > button {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+.jira-server-access {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--jira-input);
+}
+.jira-server-access summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--jira-accent);
+  cursor: pointer;
+}
+.jira-server-access[open] summary {
+  margin-bottom: 12px;
+}
+.jira-server-access > .secondary {
+  margin: 12px 0;
+}
+.jira-approved-host {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.jira-approved-host code {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.jira-server-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.jira-settings .jira-hint {
+  margin: 0;
+  font-size: 10px;
+}
+.jira-section > .jira-hint {
+  margin-top: 14px;
+}
+.jira-connection-grid > .jira-hint {
+  margin: -6px 0 0;
+}
+.jira-settings .secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: end;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--jira-accent);
+  background: var(--jira-input);
+  font-size: 11px;
+}
+.jira-settings .secondary:hover {
+  border-color: var(--jira-accent);
+}
+.jira-mapping-group {
+  margin-top: 20px;
+  min-width: 0;
+}
+.jira-mapping-group h3 {
+  font-size: 11px;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+.jira-settings .jira-mapping-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1.3fr);
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.jira-mapping-row > span {
+  overflow-wrap: anywhere;
+}
+.jira-mapping-row > svg {
+  color: var(--jira-muted);
+}
+.jira-schedule-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+.jira-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.jira-status-grid p {
+  margin: 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--jira-input);
+}
+.jira-run-status > .secondary + .secondary {
+  margin-left: 8px;
+}
+.jira-settings .jira-notice,
+.jira-problem {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--jira-accent);
+  border-radius: 6px;
+  padding: 12px 14px;
+  background: var(--jira-input);
+  margin: 14px 0;
+}
+.jira-settings .is-error,
+.jira-run-status > [role='alert'] {
+  color: #b15c50;
+  border-left-color: #b15c50;
+}
+.jira-save-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 0 -28px;
+  padding: 18px 28px;
+  border-top: 1px solid var(--line);
+  background: var(--jira-surface);
+}
+.jira-settings .jira-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  color: var(--jira-text);
+  cursor: pointer;
+}
+.jira-toggle input {
+  appearance: none;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border-radius: 12px;
+  background: var(--jira-muted);
+  cursor: pointer;
+  position: relative;
+}
+.jira-toggle input::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  top: 3px;
+  left: 3px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.jira-toggle input:checked {
+  background: var(--jira-accent);
+}
+.jira-toggle input:checked::before {
+  transform: translateX(14px);
+}
+:root[data-theme='dark'] .modal.jira-modal {
+  --jira-surface: #25272c;
+  --jira-panel: #2c2e34;
+  --jira-input: #30333a;
+  --jira-text: #e0e4ec;
+  --jira-muted: #a6aeba;
+  --jira-accent: #a6bddb;
+}
+@media (max-width: 640px) {
+  .modal.jira-modal {
+    max-height: 94dvh;
+  }
+  .jira-settings {
+    padding: 20px 16px 0;
+  }
+  .jira-intro {
+    flex-wrap: wrap;
+  }
+  .jira-intro h2 {
+    font-size: 20px;
+  }
+  .jira-section {
+    padding: 16px;
+  }
+  .jira-connection-grid,
+  .jira-mapping-grid,
+  .jira-status-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .jira-schedule-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .jira-schedule-row > button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .jira-save-bar {
+    margin: 0 -16px;
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+  .jira-save-bar .primary {
+    flex: 1;
+  }
+  .jira-run-status > .secondary {
+    width: 100%;
+  }
+  .jira-run-status > .secondary + .secondary {
+    margin: 8px 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jira-toggle input::before {
+    transition: none;
+  }
+}

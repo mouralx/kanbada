@@ -14,6 +14,7 @@ import {
 import React from 'react';
 import { type Project, type State, type Status, type Task } from '../../domain/models';
 import { isActivitiesProject } from '../../domain/projectRules';
+import { apiEnabled } from '../../infrastructure/apiClient';
 
 type BoardToolbarProps = {
   view: string;
@@ -250,6 +251,17 @@ export function BoardToolbar({
             </button>
             {menu && (
               <div className="popover options">
+                {apiEnabled && data.workspace.canManage && project.id && (
+                  <button
+                    onClick={() => {
+                      setMenu(false);
+                      setModal('Jira synchronization');
+                    }}
+                  >
+                    <SlidersHorizontal size={15} />
+                    {t('Jira synchronization')}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const blob = new Blob(

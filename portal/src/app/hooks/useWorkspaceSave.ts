@@ -23,8 +23,10 @@ export function useWorkspaceSave(
               at: new Date().toISOString(),
               message: next.activity[0] !== data.activity[0] ? next.activity[0] : message,
             },
-            ...next.notifications,
-          ].slice(0, 100),
+            ...next.notifications.filter((notification) => !notification.cardId),
+          ]
+            .slice(0, 100)
+            .concat(next.notifications.filter((notification) => notification.cardId)),
         };
       setSaving(true);
       const saved = await repository.save(next, data);

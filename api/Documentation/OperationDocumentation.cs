@@ -16,18 +16,19 @@ public static class OperationDocumentation
         var example = ApiOperationCatalog.Operations.SingleOrDefault(item => item.Method == method && item.Path == path)
             ?? throw new InvalidOperationException($"Add API documentation for {method} {path}.");
         var mutation = method is "POST" or "PUT" or "PATCH" or "DELETE";
+        var workspaceVersion = path == "/api/workspaces/{id}" && method is "PUT" or "PATCH";
         operation.Summary = example.Summary;
         operation.OperationId ??= method.ToLowerInvariant() + Regex.Replace(path, "[^a-zA-Z0-9]", "_");
         operation.Description = example.Description + "\n\n### Example request\n```http\n" + method + " " + example.ExampleUrl
             + (mutation ? "\nX-Kanbada-Request: 1" : "")
-            + (method is "PUT" or "PATCH" ? "\nIf-Match: 1" : "")
+            + (workspaceVersion ? "\nIf-Match: 1" : "")
             + "\n```\n"
             + (example.Request is null ? "This request has no body. Use the path/query examples above." : "Use the request-body examples below. Values are illustrative; replace IDs, tokens, and identities with values returned by your API.");
 
         operation.Parameters ??= [];
         if (mutation)
             operation.Parameters.Add(Parameter("X-Kanbada-Request", ParameterLocation.Header, "Required same-origin mutation marker; not an authentication token.", "1", required: true));
-        if (method is "PUT" or "PATCH")
+        if (workspaceVersion)
             operation.Parameters.Add(Parameter("If-Match", ParameterLocation.Header, "Version from the last workspace GET. Missing=428; stale=409. Reconcile changes instead of blindly retrying.", "1", required: true));
 
         foreach (var parameter in operation.Parameters.OfType<OpenApiParameter>())
@@ -62,6 +63,8 @@ public static class OperationDocumentation
         "provider" => ("google", "External provider: google or microsoft. Both client ID and client secret must be configured."),
         "returnUrl" => ("/", "Local portal path after sign-in. For example /?workspace=studio&card=KB-A1B2C3D4. External destinations are rejected in favor of /."),
         "project" => ("my-activities", "Optional exact project ID. Omit for all active projects."),
+        "projectId" => ("my-activities", "Exact Kanbada project ID in this workspace."),
+        "linkId" => ("73716be0-a56b-4589-a5f6-2bf96a531132", "Pending synchronization link UUID from connection.problems, not a Jira issue ID."),
         "bucket" => ("Discovery", "Optional exact stored bucket name. Omit for all buckets."),
         "swimlane" => ("Research", "Optional exact stored swimlane name; combine with project to disambiguate. Omit for all swimlanes."),
         "collection" => ("tasks", "One of projects, tasks, members, statuses, buckets, labels, swimlanes, notifications, activity. Responses below include examples of every collection."),
@@ -184,7 +187,13 @@ public static class OperationDocumentation
         AddProblem(operation, 403, "Request origin rejected, or this account does not have the required permission.");
         if (!example.Path.StartsWith("/api/auth")) AddProblem(operation, 404, "Resource not found, inaccessible, expired, or revoked.");
         if (example.Method is "POST" or "PUT" or "PATCH") AddProblem(operation, 409, "Conflict: duplicate resource, existing membership, or a competing workspace save. Reload and reconcile.");
-        if (example.Method is "PUT" or "PATCH") AddProblem(operation, 428, "An If-Match workspace version is required.");
+        if (example.Path == "/api/workspaces/{id}" && example.Method is "PUT" or "PATCH") AddProblem(operation, 428, "An If-Match workspace version is required.");
+        if (example.Path.EndsWith("/jira/test"))
+        {
+            AddProblem(operation, 429, "Jira connection test request limit reached.");
+            AddProblem(operation, 502, "Jira connectivity or TLS failure.");
+            AddProblem(operation, 504, "Jira request timed out.");
+        }
         if (example.Path is "/api/auth/register" or "/api/auth/login" or "/api/auth/{provider}/start" || example.Path.StartsWith("/api/auth/two-factor") || (example.Path == "/api/auth/change-password" || example.Path.StartsWith("/api/auth/avatar")))
             AddProblem(operation, 429, "Authentication request limit reached. Wait before trying again.");
         if (example.Path == "/api/auth/{provider}/start") AddProblem(operation, 503, "This sign-in provider has not been configured.");

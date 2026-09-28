@@ -11,7 +11,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problems, ILogger
         {
             ApiError e => e.Status,
             Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException => 409,
-            Npgsql.PostgresException { SqlState: "40001" or "40P01" } => 409,
+            Npgsql.PostgresException { SqlState: "40001" or "40P01" or "23505" } => 409,
             Microsoft.EntityFrameworkCore.DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "40001" or "40P01" or "23505" } } => 409,
             Microsoft.EntityFrameworkCore.DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23503" or "23514" } } => 400,
             BadHttpRequestException e => e.StatusCode,

@@ -1,4 +1,4 @@
-import { CheckCheck, Clock3, Folder, Rows3 } from 'lucide-react';
+import { CheckCheck, Clock3, Folder, LockKeyhole, Rows3 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import type { State, Task } from '../../domain/models';
 import { isActivitiesProject } from '../../domain/projectRules';
@@ -113,30 +113,41 @@ export function TaskList({
                   </span>
                 </div>
               </header>
-              {group.tasks.map((t) => (
-                <button className="list-row" key={t.id} onClick={() => onOpen(t)}>
+              {group.tasks.map((task) => (
+                <button className="list-row" key={task.id} onClick={() => onOpen(task)}>
                   <span>
                     <span
                       className="status-icon"
                       style={{
-                        background: data.statuses.find((s) => s.name === t.status)?.color,
-                        borderColor: data.statuses.find((s) => s.name === t.status)?.color,
+                        background: data.statuses.find((s) => s.name === task.status)?.color,
+                        borderColor: data.statuses.find((s) => s.name === task.status)?.color,
                       }}
                     />
                     <span className="list-task-content">
-                      <b>{t.title}</b>
-                      <CardLabels names={t.labels} definitions={data.labels} />
+                      <span className="list-task-title">
+                        <b>{task.title}</b>
+                        {task.readOnly && (
+                          <span
+                            className="list-task-lock"
+                            title={t('Managed by Jira')}
+                            aria-label={t('Managed by Jira')}
+                          >
+                            <LockKeyhole size={13} />
+                          </span>
+                        )}
+                      </span>
+                      <CardLabels names={task.labels} definitions={data.labels} />
                     </span>
-                    <small>{t.id}</small>
+                    <small>{task.id}</small>
                   </span>
-                  <span>{t.status}</span>
-                  <span className={`priority ${t.priority.toLowerCase()}`}>{t.priority}</span>
+                  <span>{task.status}</span>
+                  <span className={`priority ${task.priority.toLowerCase()}`}>{task.priority}</span>
                   <span className="assignee-stack">
-                    {t.assignees.map((name) => (
+                    {task.assignees.map((name) => (
                       <span key={name}>{avatar(name, true)}</span>
                     ))}
                   </span>
-                  <span>{t.due ? t.due.slice(5).replace('-', ' / ') : '—'}</span>
+                  <span>{task.due ? task.due.slice(5).replace('-', ' / ') : '—'}</span>
                 </button>
               ))}
             </section>

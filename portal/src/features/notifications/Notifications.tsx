@@ -30,7 +30,11 @@ export function Notifications({
                 <Bell size={15} />
               </span>
               <div>
-                <p>{t(item.message)}</p>
+                <p>
+                  {item.cardId
+                    ? t('You were assigned to {0} ({1}).', item.message, item.cardId)
+                    : t(item.message)}
+                </p>
                 <time dateTime={item.at}>{new Date(item.at).toLocaleString(locale)}</time>
               </div>
               <button

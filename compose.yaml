@@ -1,0 +1,71 @@
+name: api
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    container_name: kanbada-postgres-api
+    env_file: api/.postgres.env
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - kanbada-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kanbada -d kanbada"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    env_file: api/.postgres.env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      PortalOrigin: http://localhost:4173
+      Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
+      Platform__AdminEmails: ${PLATFORM_ADMIN_EMAILS:-}
+    ports:
+      - "127.0.0.1:5180:5180"
+    volumes:
+      - ./api/appsettings.Local.json:/app/appsettings.Local.json:ro
+      - ./api/.data-protection:/app/.data-protection
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  portal:
+    build: ./portal
+    environment:
+      API_PROXY_TARGET: http://api:5180
+    ports:
+      - "127.0.0.1:4173:4173"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "scripts/docker-healthcheck.mjs"]
+      interval: 5s
+      timeout: 5s
+      start_period: 120s
+      retries: 60
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    env_file: api/.postgres.env
+    environment:
+      Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
+    volumes:
+      - ./api/.data-protection:/app/.data-protection
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  kanbada-postgres-data:
+    name: kanbada-postgres-data

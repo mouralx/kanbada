@@ -1,4 +1,5 @@
 import { Brand } from '../../shared/Brand';
+import { useBranding } from '../../shared/PlatformBranding';
 import { ArrowLeft, ArrowRight, Check, LogOut, Plus } from 'lucide-react';
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { setStorageAccount } from '../../infrastructure/accountStorage';
@@ -53,6 +54,7 @@ export function LogoutButton() {
   );
 }
 function LocalAuthBoundary({ children }: { children: ReactNode }) {
+  const { branding } = useBranding();
   const { t, locale, setLocale } = useI18n();
   const [user, setUser] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,7 +113,8 @@ function LocalAuthBoundary({ children }: { children: ReactNode }) {
   if (loading)
     return (
       <div className="loading">
-        kanbada<span>{t('Loading…')}</span>
+        {branding.name}
+        <span>{t('Loading…')}</span>
       </div>
     );
   const logout = async () => {
@@ -184,7 +187,7 @@ function LocalAuthBoundary({ children }: { children: ReactNode }) {
               {t('Back')}
             </button>
           )}
-          <span className="auth-eyebrow">KANBADA</span>
+          <span className="auth-eyebrow">{branding.name.toUpperCase()}</span>
           <h2>
             {t(
               provider

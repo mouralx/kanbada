@@ -50,6 +50,7 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
         if (old.Version != expected)
             throw new ApiError(409, "This workspace changed. Refresh before saving to avoid overwriting someone else's changes.");
         WorkspaceValidator.Validate(state, old.Personal);
+        JiraCardPolicy.ValidateChanges(old.State, state);
         var previousMembers = WorkspaceJson.Items(old.State, "members");
         var nextMembers = WorkspaceJson.Items(state, "members");
         var actor = previousMembers.FirstOrDefault(m => WorkspaceJson.Text(m, "userId") == user.ToString()) ?? throw new ApiError(403, "Membership required.");
@@ -146,7 +147,8 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
             var stored = db.Members.Local.SingleOrDefault(x => x.WorkspaceId == id && x.Email == WorkspaceJson.Text(member, "email").ToLowerInvariant());
             if (stored is not null) member!["invitationToken"] = stored.InviteToken;
         }
-        mapper.Apply(id, state);
+        mapper.Apply(id, state, user);
+        await AssignmentNotifications.CreateForNewAssignments(db, id, default);
         var workspace = db.Workspaces.Local.Single(x => x.Id == id);
         workspace.Version++;
         workspace.UpdatedAt = DateTimeOffset.UtcNow;
@@ -164,6 +166,9 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
             ?? throw new ApiError(404, "Workspace not found or access denied.");
         if (workspace.OwnerId != user) throw new ApiError(403, "Only the owner can delete a workspace.");
         if (workspace.Personal) throw new ApiError(400, "My Workspace cannot be deleted.");
+        var readOnlyCards = JiraCardPolicy.ReadOnlyCardIds(db, id);
+        if (await db.Cards.AnyAsync(card => card.WorkspaceId == id && readOnlyCards.Contains(card.Id)))
+            throw new ApiError(403, "This workspace contains read-only Jira cards. Change the synchronization direction before deleting it.");
         db.Workspaces.Remove(workspace);
         await db.SaveChangesAsync();
     }

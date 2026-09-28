@@ -1,0 +1,16 @@
+.git
+**/.DS_Store
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/test-results
+**/*.tsbuildinfo
+**/.env*
+**/.postgres.env
+**/appsettings.Local.json
+**/.data-protection
+api/tests
+portal
+docs
+tools

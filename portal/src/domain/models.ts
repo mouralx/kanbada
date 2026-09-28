@@ -4,6 +4,7 @@ export type Definition = { id: string; name: string; color: string; complete: bo
 export type HistoryEntry = { id: string; at: string; actor: string; changes: string[] };
 export type Task = {
   id: string;
+  readOnly?: boolean;
   project: string;
   title: string;
   description: string;
@@ -47,7 +48,7 @@ export type Workspace = {
   banner?: string;
   bannerPosition?: number;
 };
-export type Notification = { id: string; message: string; at: string };
+export type Notification = { id: string; message: string; at: string; cardId?: string };
 export type State = {
   version?: number;
   notifications: Notification[];

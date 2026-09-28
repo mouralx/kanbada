@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useI18n } from './i18n';
+import { useBranding } from './PlatformBranding';
 type Theme = 'light' | 'dark' | 'system';
 const valid = (value: string | null): Theme =>
   value === 'light' || value === 'dark' ? value : 'system';
@@ -19,13 +20,16 @@ const Context = createContext<{ theme: Theme; setTheme: (theme: Theme) => void }
   setTheme: () => {},
 });
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const { branding } = useBranding();
+  const [preference, setTheme] = useState<Theme | null>(() => {
     try {
-      return valid(localStorage.getItem(key));
+      const stored = localStorage.getItem(key);
+      return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : null;
     } catch {
-      return 'system';
+      return null;
     }
   });
+  const theme = preference ?? branding.defaultTheme;
   useLayoutEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
@@ -34,15 +38,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.documentElement.style.colorScheme = resolved;
       document
         .querySelector('meta[name="theme-color"]')
-        ?.setAttribute('content', resolved === 'dark' ? '#121b28' : '#f8f9fb');
+        ?.setAttribute(
+          'content',
+          resolved === 'dark' ? branding.darkBackground : branding.lightBackground,
+        );
     };
     apply();
     media.addEventListener('change', apply);
     return () => media.removeEventListener('change', apply);
-  }, [theme]);
+  }, [theme, branding.darkBackground, branding.lightBackground]);
   useLayoutEffect(() => {
     const changed = (event: StorageEvent) => {
-      if (event.key === key || event.key === null) setTheme(valid(event.newValue));
+      if (event.key === key || event.key === null)
+        setTheme(event.newValue === null ? null : valid(event.newValue));
     };
     window.addEventListener('storage', changed);
     return () => window.removeEventListener('storage', changed);

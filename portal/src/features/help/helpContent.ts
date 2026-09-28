@@ -13,6 +13,7 @@ export const helpCategories = [
   ['Workflow & organization', 'Processo e organização'],
   ['Dashboards & exports', 'Painéis e exportações'],
   ['Links & sharing', 'Ligações e partilha'],
+  ['Jira synchronization', 'Sincronização Jira'],
 ];
 export const helpArticles: HelpArticle[] = [
   {
@@ -44,11 +45,11 @@ export const helpArticles: HelpArticle[] = [
     category: 'Account & appearance',
     en: [
       'How do I change my name, email, or profile picture?',
-      'Open your avatar in the header or your profile at the bottom of the sidebar. Edit your name or use Change photo. Your sign-in email is read-only. Preview the image, then choose Save profile. JPG, PNG, WebP, and GIF files up to 2 MB are supported. Remove photo restores your initials after saving.',
+      'Open your avatar in the header or your profile at the bottom of the sidebar. Edit your name or use Change photo. Your sign-in email is read-only. Preview the image, then choose Save profile. JPG, PNG, WebP, and GIF files up to 2 MB are supported. A profile photo is required for server accounts; it can be replaced, not removed. SVG uploads are available for the platform logo, not profile photos.',
     ],
     pt: [
       'Como altero o nome, o email ou a fotografia de perfil?',
-      'Abra o avatar no cabeçalho ou o perfil no fundo do menu lateral. Edite o nome ou use Alterar fotografia. O email de início de sessão é apenas de leitura. Veja a pré-visualização e escolha Guardar perfil. São aceites imagens JPG, PNG, WebP e GIF até 2 MB. Remover fotografia repõe as iniciais depois de guardar.',
+      'Abra o avatar no cabeçalho ou o perfil no fundo do menu lateral. Edite o nome ou use Alterar fotografia. O email de início de sessão é apenas de leitura. Veja a pré-visualização e escolha Guardar perfil. São aceites imagens JPG, PNG, WebP e GIF até 2 MB. A fotografia é obrigatória nas contas do servidor: pode substituí-la, mas não removê-la. O carregamento de SVG está disponível para o logótipo da plataforma, não para fotografias de perfil.',
     ],
   },
   {
@@ -91,12 +92,12 @@ export const helpArticles: HelpArticle[] = [
     id: 'notifications',
     category: 'Account & appearance',
     en: [
-      'How do I clear notifications?',
-      'Open the bell in the header. Dismiss an individual notification or use Clear notifications to remove them all. The unread indicator clears, but card history and workspace activity are preserved. Later updates can create new notifications.',
+      'When do I receive assignment notifications, and how do I clear them?',
+      'Open the bell in the header. A new assignment to your registered account creates a private notification in that workspace, including assignments imported from Jira. Unchanged assignments do not notify again, and old assignments are not backfilled. Dismiss one notification or use Clear notifications to clear your visible notifications, not another member’s private notices. Card history and workspace activity are preserved.',
     ],
     pt: [
-      'Como limpo as notificações?',
-      'Abra o sino no cabeçalho. Dispense uma notificação ou use Limpar notificações para remover todas. O indicador de notificações desaparece, mas o histórico dos cartões e a atividade do espaço são preservados. As alterações seguintes podem gerar novas notificações.',
+      'Quando recebo notificações de atribuição e como as limpo?',
+      'Abra o sino no cabeçalho. Uma nova atribuição à sua conta registada cria uma notificação privada nesse espaço, incluindo atribuições importadas do Jira. Atribuições inalteradas não voltam a notificar e as antigas não geram notificações retroativas. Dispense uma notificação ou use Limpar notificações para limpar as que lhe são apresentadas, não as notificações privadas de outros membros. O histórico dos cartões e a atividade do espaço são preservados.',
     ],
   },
   {
@@ -332,11 +333,11 @@ export const helpArticles: HelpArticle[] = [
     category: 'Workflow & organization',
     en: [
       'How do I manage and apply labels?',
-      'Use Manage labels above the board or inside a card. Create labels, choose their colors, rename, and reorder them, then save. Select one or more labels in card Details and Save task. Labels appear in cards on the board, list, and editor. A label in use must be removed from its cards before deletion.',
+      'Use Manage labels above the board or inside a card. Create labels, choose their colors, rename, and reorder them, then save. Names must be unique within the workspace, ignoring capitalization and surrounding spaces: ADMO and admo are the same label. Jira imports reuse existing labels without changing their spelling or color. Select labels in card Details and Save task. A label in use must be removed from its cards before deletion.',
     ],
     pt: [
       'Como giro e aplico etiquetas?',
-      'Use Gerir etiquetas acima do quadro ou dentro de um cartão. Crie etiquetas, escolha cores, renomeie e ordene; depois guarde. Selecione uma ou mais etiquetas em Detalhes e escolha Guardar tarefa. As etiquetas aparecem nos cartões do quadro, da lista e do editor. Antes de eliminar uma etiqueta em uso, retire-a dos cartões.',
+      'Use Gerir etiquetas acima do quadro ou dentro de um cartão. Crie etiquetas, escolha cores, renomeie e ordene; depois guarde. Os nomes têm de ser únicos no espaço, ignorando maiúsculas e espaços nas extremidades: ADMO e admo são a mesma etiqueta. As importações Jira reutilizam etiquetas existentes sem alterar a grafia ou a cor. Selecione etiquetas em Detalhes e escolha Guardar tarefa. Antes de eliminar uma etiqueta em uso, retire-a dos cartões.',
     ],
   },
   {
@@ -469,6 +470,222 @@ export const helpArticles: HelpArticle[] = [
     pt: [
       'Porque não consegue alguém abrir o meu cartão partilhado?',
       'Verifique se a ligação não expirou nem foi revogada, se o cartão existe e se a pessoa iniciou sessão com uma conta permitida. A ligação deve apontar para um servidor acessível ao destinatário. Um endereço localhost só funciona no computador que executa o Kanbada; use o endereço da aplicação publicada para outros dispositivos.',
+    ],
+  },
+  {
+    id: 'registration-setup',
+    category: 'Account & appearance',
+    en: [
+      'What must I complete before opening my workspace?',
+      'Email registration needs your name, email and a password of 12–200 characters. Finish the guided setup: choose your Gravatar photo if available or upload a JPG, PNG, WebP or GIF under 2 MB, then set up two-factor authentication. Google and Microsoft accounts also complete the required account setup. An invitation or shared-card link does not bypass these steps. Provider sign-in is available only when enabled by the installation administrator.',
+    ],
+    pt: [
+      'O que tenho de concluir antes de abrir o espaço?',
+      'O registo por email requer nome, email e uma palavra-passe de 12–200 caracteres. Conclua a configuração guiada: escolha a fotografia do Gravatar, se disponível, ou carregue JPG, PNG, WebP ou GIF até 2 MB; depois configure a autenticação de dois fatores. As contas Google e Microsoft também concluem a configuração obrigatória. Um convite ou uma ligação de partilha não dispensa estes passos. O início de sessão por fornecedor só está disponível quando ativado pelo administrador da instalação.',
+    ],
+  },
+  {
+    id: 'two-factor',
+    category: 'Account & appearance',
+    en: [
+      'How do I set up two-factor authentication?',
+      'During account setup, choose Set up authenticator and enter your current password if requested. In Microsoft Authenticator or another compatible app, add an account by scanning the QR code or entering the setup key. Enter its six-digit code and confirm before the setup expires in ten minutes. Download or securely store the recovery codes, then confirm that you saved them. Later sign-ins require an authenticator or recovery code. Two-factor authentication is required and cannot be disabled in the profile.',
+    ],
+    pt: [
+      'Como configuro a autenticação de dois fatores?',
+      'Durante a configuração da conta, escolha Configurar autenticador e introduza a palavra-passe atual, se pedida. No Microsoft Authenticator ou noutra aplicação compatível, adicione uma conta lendo o código QR ou introduzindo a chave de configuração. Introduza o código de seis dígitos e confirme antes de a configuração expirar, ao fim de dez minutos. Transfira ou guarde os códigos de recuperação num local seguro e confirme que os guardou. Os inícios de sessão seguintes exigem um código do autenticador ou de recuperação. A autenticação de dois fatores é obrigatória e não pode ser desativada no perfil.',
+    ],
+  },
+  {
+    id: 'recovery-codes',
+    category: 'Account & appearance',
+    en: [
+      'What if I lose my authenticator or need new recovery codes?',
+      'At sign-in, enter one of your saved recovery codes instead of an authenticator code. Each recovery code works once. In Profile → Two-factor authentication, check how many remain or choose Generate recovery codes. Supply your current password when requested and an authenticator or recovery code. Generating a new set invalidates every previous code; download and store the new set immediately because it is not shown again. There is no self-service recovery if you lose both your authenticator and all recovery codes; contact your installation administrator for assistance.',
+    ],
+    pt: [
+      'E se perder o autenticador ou precisar de novos códigos de recuperação?',
+      'Ao iniciar sessão, introduza um código de recuperação guardado em vez do código do autenticador. Cada código de recuperação funciona uma vez. Em Perfil → Autenticação de dois fatores, consulte quantos restam ou escolha Gerar códigos de recuperação. Introduza a palavra-passe atual, quando pedida, e um código do autenticador ou de recuperação. Um novo conjunto invalida todos os códigos anteriores; transfira-o e guarde-o imediatamente, pois não volta a ser apresentado. Não existe recuperação autónoma se perder o autenticador e todos os códigos; contacte o administrador da instalação para obter ajuda.',
+    ],
+  },
+  {
+    id: 'password',
+    category: 'Account & appearance',
+    en: [
+      'How do I change my password?',
+      'Open Profile → Change password. Enter your current password, a new password of 12–200 characters, its confirmation, and an authenticator or recovery code. Save new password keeps your current session and signs out your other sessions. Google-only or Microsoft-only accounts manage their password with that provider. There is no email-based Forgot password flow in Kanbada; changing a password here requires the current password and second factor.',
+    ],
+    pt: [
+      'Como altero a palavra-passe?',
+      'Abra Perfil → Alterar palavra-passe. Introduza a palavra-passe atual, uma nova de 12–200 caracteres, a confirmação e um código do autenticador ou de recuperação. Guardar nova palavra-passe mantém a sessão atual e termina as restantes sessões. As contas exclusivamente Google ou Microsoft gerem a palavra-passe nesse fornecedor. O Kanbada não tem recuperação de palavra-passe por email; a alteração aqui exige a palavra-passe atual e o segundo fator.',
+    ],
+  },
+  {
+    id: 'platform-appearance',
+    category: 'Account & appearance',
+    en: [
+      'How do I customize the platform name, colors and typography?',
+      'A platform administrator opens Settings → Platform appearance. Set the name, primary and accent colors, light/dark backgrounds, panel colors, text and borders, plus sidebar background and text. Use color pickers or #RRGGBB hexadecimal values; Automatic removes an optional override. Choose the default, system, DM Sans or Manrope font, text size from 90–120%, and corner rounding from 0–16. Text colors are adjusted for readability. These controls style navigation, views, forms, dialogs and sign-in screens; status, priority, label and other content colors remain independent.',
+    ],
+    pt: [
+      'Como personalizo o nome, as cores e a tipografia da plataforma?',
+      'Um administrador da plataforma abre Definições → Aparência da plataforma. Defina o nome, as cores principal e de destaque, fundos claros/escuros, painéis, texto e contornos, além do fundo e texto do menu lateral. Use os seletores de cor ou valores hexadecimais #RRGGBB; Automático remove uma personalização opcional. Escolha a tipografia predefinida, do sistema, DM Sans ou Manrope, o tamanho do texto entre 90–120% e o arredondamento entre 0–16. As cores do texto são ajustadas para legibilidade. Estas opções aplicam-se à navegação, vistas, formulários, diálogos e início de sessão; as cores de estados, prioridades, etiquetas e outros conteúdos permanecem independentes.',
+    ],
+  },
+  {
+    id: 'platform-logo',
+    category: 'Account & appearance',
+    en: [
+      'Which logo formats can I upload, including SVG?',
+      'In Settings → Platform appearance, upload an Expanded sidebar logo and an optional Collapsed sidebar logo. Without a collapsed upload, the main logo is reused. Other screens and mobile navigation use the main logo. Both accept PNG, JPG, GIF, WebP or SVG up to 2 MB; SVG is converted to transparent PNG with a 1024-pixel longest edge. Turn off Show name beside logo for a centered logo without visible text. The name remains required for the browser title and accessibility. Review the preview, then Save platform appearance. Remove logo restores the built-in symbol; removing the collapsed logo restores the main-logo fallback. Workspace icons and banners are configured separately under Workspace appearance.',
+    ],
+    pt: [
+      'Que formatos de logótipo posso carregar, incluindo SVG?',
+      'Em Definições → Aparência da plataforma, carregue um Logótipo do menu lateral expandido e, opcionalmente, um Logótipo do menu lateral recolhido. Sem este último, é reutilizado o principal. Os outros ecrãs e a navegação móvel usam o principal. Ambos aceitam PNG, JPG, GIF, WebP ou SVG até 2 MB; o SVG é convertido para PNG transparente com 1024 píxeis no lado maior. Desative Mostrar nome junto do logótipo para um logótipo centrado sem texto visível. O nome continua obrigatório para o título do navegador e acessibilidade. Confirme a pré-visualização e escolha Guardar aparência da plataforma. Remover logótipo repõe o símbolo original; remover o recolhido repõe a utilização do principal. Os ícones e capas dos espaços configuram-se separadamente em Aparência do espaço de trabalho.',
+    ],
+  },
+  {
+    id: 'platform-publish',
+    category: 'Account & appearance',
+    en: [
+      'When do appearance changes take effect, and how do I reset them?',
+      'The light/dark preview is private to your draft: nothing is published until Save platform appearance. Open tabs refresh branding within about a minute; reload to see it immediately. A personal Light, Dark or System preference takes precedence over the platform default. Reset to defaults changes only the draft and also needs saving. If another administrator saves first, reload the saved settings and review your edits rather than overwrite their changes. Platform-wide appearance requires a configured platform administrator, not just workspace ownership.',
+    ],
+    pt: [
+      'Quando são aplicadas as alterações de aparência e como as reponho?',
+      'A pré-visualização clara/escura pertence apenas ao rascunho: nada é publicado antes de Guardar aparência da plataforma. Os separadores abertos atualizam a identidade em cerca de um minuto; recarregue para a ver imediatamente. A preferência pessoal Claro, Escuro ou Sistema prevalece sobre a predefinição da plataforma. Repor predefinições só altera o rascunho e também exige guardar. Se outro administrador guardar primeiro, recarregue as definições e reveja as suas alterações em vez de as sobrepor. A aparência global exige um administrador da plataforma configurado, não apenas a propriedade de um espaço.',
+    ],
+  },
+  {
+    id: 'permissions',
+    category: 'Workspaces & members',
+    en: [
+      'Why are some settings or actions unavailable to me?',
+      'Workspace members collaborate on cards and workflows. The workspace owner manages workspace settings, membership, deletion and project Jira connections. Platform administrators manage global appearance and Jira server approvals; this is a separate permission. Pending invitees must accept their invitation before joining or being mapped as a Jira assignee. Invitations are copied and sent by the owner, not emailed automatically. Personal workspaces and My activities have additional deletion restrictions. Jira-managed read-only cards also prevent changes or deletion that would remove those cards.',
+    ],
+    pt: [
+      'Porque não tenho acesso a algumas definições ou ações?',
+      'Os membros colaboram nos cartões e processos. O proprietário gere as definições, membros e eliminação do espaço, e as ligações Jira dos projetos. Os administradores da plataforma gerem a aparência global e a aprovação de servidores Jira; é uma permissão distinta. Os convidados têm de aceitar o convite antes de aderirem ou serem associados a um responsável Jira. O proprietário copia e envia os convites; não são enviados automaticamente por email. Os espaços pessoais e As minhas atividades têm restrições adicionais de eliminação. Os cartões Jira apenas de leitura também impedem alterações ou eliminações que os removam.',
+    ],
+  },
+  {
+    id: 'jira-connect',
+    category: 'Jira synchronization',
+    en: [
+      'How do I connect a project to Jira?',
+      'As workspace owner, open the project’s three-dot Project options → Jira synchronization. Each project supports one connection. Choose Data Center / Server for a personal access token (PAT), or Cloud for an account email and API token. Enter the HTTPS base URL, project key for new issues and JQL. Retain any Data Center context path; classic Cloud URLs look like https://your-site.atlassian.net, while scoped tokens use https://api.atlassian.com/ex/jira/YOUR_CLOUD_ID. Approve server access if needed, then Test connection and load mappings. Select the issue type, map fields, choose direction and schedule, enable and save.',
+    ],
+    pt: [
+      'Como ligo um projeto ao Jira?',
+      'Como proprietário do espaço, abra o menu de três pontos Opções do projeto → Sincronização Jira. Cada projeto admite uma ligação. Escolha Data Center / Server para um token de acesso pessoal (PAT), ou Cloud para email da conta e token de API. Introduza o URL base HTTPS, a chave do projeto para novos pedidos e a JQL. Mantenha o caminho de contexto do Data Center; os URLs Cloud clássicos seguem https://your-site.atlassian.net, enquanto os tokens com âmbito usam https://api.atlassian.com/ex/jira/YOUR_CLOUD_ID. Aprove o acesso ao servidor, se necessário, e teste a ligação para carregar os mapeamentos. Selecione o tipo de pedido, mapeie campos, escolha direção e horário, ative e guarde.',
+    ],
+  },
+  {
+    id: 'jira-server',
+    category: 'Jira synchronization',
+    en: [
+      'How do I approve a Jira server without changing deployment settings?',
+      'In Jira synchronization, enter the HTTPS URL and expand Server access. A platform administrator chooses Approve this Jira server and confirms the exact hostname and any non-default port. Workspace owners without that permission ask a platform administrator to use the same panel. Approval is saved immediately: no environment variables or container restarts are needed. Standard atlassian.net Cloud sites are already allowed. Administrators can revoke saved approvals; deployment-policy allowances are read-only here. Approve only trusted servers because the connector sends credentials to them.',
+    ],
+    pt: [
+      'Como aprovo um servidor Jira sem alterar a instalação?',
+      'Em Sincronização Jira, introduza o URL HTTPS e abra Acesso ao servidor. Um administrador da plataforma escolhe Aprovar este servidor Jira e confirma o nome do servidor e qualquer porta não predefinida. Os proprietários sem essa permissão pedem a um administrador que use o mesmo painel. A aprovação é guardada imediatamente: não são necessárias variáveis de ambiente nem reinícios de contentores. Os sites Cloud atlassian.net padrão já são permitidos. Os administradores podem revogar aprovações guardadas; as permissões impostas pela instalação são apenas de leitura neste painel. Aprove apenas servidores de confiança, pois recebem as credenciais do conector.',
+    ],
+  },
+  {
+    id: 'jira-direction',
+    category: 'Jira synchronization',
+    en: [
+      'What do the three synchronization directions do?',
+      'Jira to Kanbada imports matching issues and updates linked cards without writing to Jira. Kanbada to Jira creates issues for unlinked project cards and updates linked issues within the JQL scope, without importing unrelated Jira issues. Bidirectional creates missing counterparts and propagates changes from either side. If both sides changed, the original creation system wins for synchronized fields: Jira for imports, Kanbada for exports. Cards are not matched by title. Assignees, when enabled, always flow only from Jira. Deletions never propagate in either direction.',
+    ],
+    pt: [
+      'O que fazem as três direções de sincronização?',
+      'Jira para Kanbada importa pedidos correspondentes e atualiza cartões ligados sem escrever no Jira. Kanbada para Jira cria pedidos para cartões do projeto ainda sem ligação e atualiza pedidos ligados abrangidos pela JQL, sem importar outros pedidos Jira. Bidirecional cria os elementos em falta e transmite alterações de ambos os lados. Se ambos mudarem, o sistema de criação original prevalece nos campos sincronizados: Jira nas importações, Kanbada nas exportações. Os cartões não são associados pelo título. Os responsáveis, quando ativados, vêm sempre apenas do Jira. As eliminações nunca são propagadas em qualquer direção.',
+    ],
+  },
+  {
+    id: 'jira-scope',
+    category: 'Jira synchronization',
+    en: [
+      'How does JQL limit synchronization, and which fields are included?',
+      'JQL is evaluated on every run, including for already linked issues. Start with a narrow query such as project = TEAM ORDER BY updated DESC and test it. Ensure the query also includes issues created in your chosen outbound project. Titles, descriptions, statuses, priorities, labels and due dates synchronize; assignees are optional and inbound only. Comments, attachments, checklists, buckets and swimlanes do not synchronize. Cloud descriptions are represented as plain text, not a full rich-format round trip. Issues outside the query or no longer accessible are left alone and reported. More than 10,000 results is an error, not a partial import.',
+    ],
+    pt: [
+      'Como limita a JQL a sincronização e que campos são incluídos?',
+      'A JQL é avaliada em cada execução, incluindo os pedidos já ligados. Comece com uma consulta restrita, como project = TEAM ORDER BY updated DESC, e teste-a. Garanta que também inclui pedidos criados no projeto de destino escolhido. Sincronizam-se títulos, descrições, estados, prioridades, etiquetas e datas limite; os responsáveis são opcionais e apenas de entrada. Comentários, anexos, listas de verificação, grupos e faixas não são sincronizados. As descrições Cloud são representadas como texto simples, sem preservar toda a formatação numa ida e volta. Os pedidos fora da consulta ou inacessíveis não são alterados e são reportados. Mais de 10 000 resultados gera um erro, não uma importação parcial.',
+    ],
+  },
+  {
+    id: 'jira-status-mapping',
+    category: 'Jira synchronization',
+    en: [
+      'How do I map several Jira statuses to one Kanbada status?',
+      'Test connection and load mappings populates dropdowns with Jira names; saved connections load them automatically. Under Status mapping, choose the matching Jira status and use Add Jira status for additional states that should share a Kanbada status. Each Jira status belongs to one Kanbada status. Select exactly one Default outbound target per mapped Kanbada status. If Jira is already in any status mapped to the desired Kanbada status, no transition is made. Map priorities separately: they remain one-to-one. Unavailable choices or unmapped values need correction, not a guessed replacement.',
+    ],
+    pt: [
+      'Como associo vários estados Jira a um estado Kanbada?',
+      'Testar a ligação e carregar mapeamentos preenche os seletores com nomes Jira; as ligações guardadas carregam-nos automaticamente. Em Mapeamento de estados, escolha o estado correspondente e use Adicionar estado Jira para outros estados que devam partilhar o mesmo estado Kanbada. Cada estado Jira pertence a um estado Kanbada. Selecione exatamente um destino predefinido de saída por estado Kanbada mapeado. Se o Jira já estiver num estado associado ao estado Kanbada pretendido, não é feita qualquer transição. Mapeie as prioridades separadamente: continuam a ser um-para-um. As opções indisponíveis e os valores sem mapeamento precisam de correção, não de uma substituição presumida.',
+    ],
+  },
+  {
+    id: 'jira-assignees',
+    category: 'Jira synchronization',
+    en: [
+      'How do I map Jira assignees to workspace members?',
+      'Enable Synchronize assignees from Jira under Assignee mapping, then select Jira users and registered workspace members by name. Invitees must join first. Choices include users found in the JQL results and saved mappings, not the entire Jira directory. This option is off by default and works only with Jira to Kanbada or Bidirectional. The mapped member replaces all current card assignees. An unassigned Jira issue clears them; an unmapped Jira user also clears them and records an Assignee mapping warning. Fix the mapping and run again. Kanbada never writes Jira assignees, even when creating issues.',
+    ],
+    pt: [
+      'Como associo responsáveis Jira a membros do espaço?',
+      'Ative Sincronizar responsáveis do Jira em Mapeamento de responsáveis e selecione utilizadores Jira e membros registados pelo nome. Os convidados têm de aderir primeiro. As opções incluem utilizadores encontrados nos resultados JQL e nos mapeamentos guardados, não todo o diretório Jira. A opção está desativada por predefinição e só funciona com Jira para Kanbada ou Bidirecional. O membro mapeado substitui todos os responsáveis atuais do cartão. Um pedido sem responsável limpa as atribuições; um utilizador Jira sem mapeamento também as limpa e regista um aviso. Corrija o mapeamento e execute novamente. O Kanbada nunca escreve responsáveis no Jira, nem ao criar pedidos.',
+    ],
+  },
+  {
+    id: 'jira-schedule',
+    category: 'Jira synchronization',
+    en: [
+      'How do I schedule synchronization or run it immediately?',
+      'Choose an interval and Minutes, Hours, Days or Months, apply the preset, and review the five-field cron expression and time zone. For example, */15 * * * * runs every 15 minutes; 0 9 * * * runs daily at 09:00 in the selected zone. Cron follows calendar boundaries: every two days is not always an exact 48-hour interval, and nonexistent dates are skipped. Enable synchronization and save. Run saved configuration now uses the saved settings, not unsaved edits; use Refresh status to check progress. The worker runs independently of your browser. Timing is approximate, and missed schedules during downtime coalesce into one run.',
+    ],
+    pt: [
+      'Como agendo a sincronização ou a executo imediatamente?',
+      'Escolha um intervalo e Minutos, Horas, Dias ou Meses, aplique a predefinição e reveja a expressão cron de cinco campos e o fuso horário. Por exemplo, */15 * * * * executa a cada 15 minutos; 0 9 * * * executa diariamente às 09:00 no fuso escolhido. O cron segue o calendário: de dois em dois dias nem sempre significa exatamente 48 horas e as datas inexistentes são ignoradas. Ative a sincronização e guarde. Executar configuração guardada agora usa as definições guardadas, não as edições pendentes; use Atualizar estado para acompanhar. O processo de sincronização funciona sem o navegador aberto. O horário é aproximado e os agendamentos perdidos durante uma paragem são reunidos numa execução.',
+    ],
+  },
+  {
+    id: 'jira-read-only',
+    category: 'Jira synchronization',
+    en: [
+      'Why is my Jira card locked, and how do I open it in Jira?',
+      'A card with a confirmed Jira link is entirely read-only when its connection is Jira to Kanbada. Fields, assignments, comments, checklists, attachment changes, dragging, duplication and deletion are disabled. History, downloads and Open in Jira remain available in Details; the Jira link opens a new tab and Jira may require its own sign-in. Unlinked cards remain editable. Pausing synchronization does not unlock linked cards: the workspace owner must change direction to allow local edits. A workspace containing locked cards cannot be deleted.',
+    ],
+    pt: [
+      'Porque está bloqueado o meu cartão Jira e como o abro no Jira?',
+      'Um cartão com ligação Jira confirmada é inteiramente de leitura quando a direção é Jira para Kanbada. Campos, atribuições, comentários, listas de verificação, alterações de anexos, arrastar, duplicar e eliminar ficam desativados. O Histórico, as transferências e Abrir no Jira continuam disponíveis em Detalhes; a ligação abre um novo separador e o Jira pode exigir início de sessão próprio. Os cartões sem ligação continuam editáveis. Pausar a sincronização não desbloqueia os cartões ligados: o proprietário tem de mudar a direção para permitir edições locais. Não é possível eliminar um espaço que contenha cartões bloqueados.',
+    ],
+  },
+  {
+    id: 'jira-troubleshooting',
+    category: 'Jira synchronization',
+    en: [
+      'What should I do when a Jira run fails or reports warnings?',
+      'Open Jira synchronization and Refresh status, then inspect the run and affected issue details. Test connection and load mappings to check the URL, credentials and JQL without writing issues. For 401/403, check token validity and permissions; for 404, check the base URL, context path, Cloud token URL and issue visibility. Fix missing status/priority/assignee mappings, required Jira fields or unavailable transitions. Required custom fields are not supplied by this connector. Respect rate-limit errors and retry later. Save corrections before running again; an item can fail while others succeed. Never share tokens in screenshots or error reports.',
+    ],
+    pt: [
+      'O que faço quando uma execução Jira falha ou apresenta avisos?',
+      'Abra Sincronização Jira e Atualizar estado; consulte a execução e os detalhes dos pedidos afetados. Teste a ligação e carregue mapeamentos para verificar URL, credenciais e JQL sem escrever pedidos. Para 401/403, verifique a validade e permissões do token; para 404, confirme o URL base, o caminho de contexto, o URL do token Cloud e a visibilidade do pedido. Corrija mapeamentos de estados/prioridades/responsáveis, campos obrigatórios Jira ou transições indisponíveis. Este conector não fornece campos personalizados obrigatórios. Respeite os limites de pedidos e tente mais tarde. Guarde as correções antes de executar novamente; um item pode falhar enquanto outros têm sucesso. Nunca partilhe tokens em capturas ou relatórios de erro.',
+    ],
+  },
+  {
+    id: 'jira-pause',
+    category: 'Jira synchronization',
+    en: [
+      'How do I pause Jira synchronization or change its configuration safely?',
+      'Turn off Enable synchronization and save; let any running job finish before making major changes. Archiving a project pauses scheduled and manual runs. Deleting a project removes its connection and links, not the Jira issues, but deletion is blocked if it would remove read-only cards. A blank token preserves the saved credential. Once issue links exist, the Jira instance, edition and target project cannot be changed on that connection. Adjust JQL, mappings or direction carefully: origin-based conflict handling remains unchanged, and pausing alone does not remove card locks or Open in Jira links.',
+    ],
+    pt: [
+      'Como pauso a sincronização Jira ou altero a configuração em segurança?',
+      'Desative Ativar sincronização e guarde; deixe terminar qualquer execução em curso antes de alterações importantes. Arquivar um projeto pausa execuções agendadas e manuais. Eliminar um projeto remove a ligação e associações, não os pedidos Jira, mas a eliminação é impedida se remover cartões apenas de leitura. Um token em branco preserva a credencial guardada. Depois de existirem ligações a pedidos, não pode mudar a instância Jira, edição ou projeto de destino nessa ligação. Altere JQL, mapeamentos ou direção com cuidado: a resolução de conflitos pela origem mantém-se e pausar não remove bloqueios nem ligações Abrir no Jira.',
     ],
   },
 ];

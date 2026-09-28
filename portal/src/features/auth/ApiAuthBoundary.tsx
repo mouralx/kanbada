@@ -1,6 +1,7 @@
 import { AvatarGate } from './AvatarGate';
 import { TwoFactorGate } from './TwoFactorGate';
 import { Brand } from '../../shared/Brand';
+import { useBranding } from '../../shared/PlatformBranding';
 import { ArrowRight, LockKeyhole, Mail } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { setStorageAccount } from '../../infrastructure/accountStorage';
@@ -17,6 +18,7 @@ type Session = {
   twoFactorVerificationRequired?: boolean;
 };
 export function ApiAuthBoundary({ children }: { children: ReactNode }) {
+  const { branding } = useBranding();
   const { t, locale, setLocale } = useI18n();
   const [enrollmentActive, setEnrollmentActive] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
@@ -81,7 +83,8 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
   if (!session)
     return (
       <div className="loading">
-        kanbada<span>{t('Loading…')}</span>
+        {branding.name}
+        <span>{t('Loading…')}</span>
       </div>
     );
   if (session.user && session.avatarRequired)
@@ -141,7 +144,7 @@ export function ApiAuthBoundary({ children }: { children: ReactNode }) {
           </select>
         </div>
         <div className="auth-form">
-          <span className="auth-eyebrow">KANBADA</span>
+          <span className="auth-eyebrow">{branding.name.toUpperCase()}</span>
           <h2>{t(register ? 'Create your account' : 'Welcome to your workspace.')}</h2>
           <p>{t('Sign in or create an account to get started.')}</p>
           <div className="provider-buttons">

@@ -1,0 +1,92 @@
+:root[data-platform-theme],
+[data-platform-theme].platform-preview {
+  --ui-bg: var(--ui-light-bg);
+  --ui-surface: var(--ui-light-surface);
+  --ui-field: var(--ui-light-field);
+  --ui-raised: var(--ui-light-raised);
+  --ui-panel-text: var(--ui-light-text);
+  --ui-text: var(--ui-light-page-text);
+  --ui-muted: var(--ui-light-muted);
+  --ui-border: var(--ui-light-border);
+  --ui-primary: var(--ui-light-primary);
+  --ui-on-primary: var(--ui-light-on-primary);
+  --ui-accent: var(--ui-light-accent);
+  --ui-on-accent: var(--ui-light-on-accent);
+  --ui-link: var(--ui-light-link);
+  --ui-selection: var(--ui-light-selection);
+  --ui-select-arrow: var(--ui-light-select-arrow);
+  --ui-sidebar: var(--ui-light-sidebar);
+  --ui-sidebar-text: var(--ui-light-sidebar-text);
+  --ui-sidebar-muted: var(--ui-light-sidebar-muted);
+  --ui-sidebar-border: var(--ui-light-sidebar-border);
+  --ui-sidebar-panel: var(--ui-light-sidebar-panel);
+  --ui-shadow: #00000026;
+  --line: var(--ui-border);
+  --muted: var(--ui-muted);
+  --green: var(--ui-link);
+  font-family: var(--ui-font-body);
+}
+:root[data-platform-theme][data-theme='dark'],
+[data-platform-theme].platform-preview[data-theme='dark'] {
+  --ui-bg: var(--ui-dark-bg);
+  --ui-surface: var(--ui-dark-surface);
+  --ui-field: var(--ui-dark-field);
+  --ui-raised: var(--ui-dark-raised);
+  --ui-panel-text: var(--ui-dark-text);
+  --ui-text: var(--ui-dark-page-text);
+  --ui-muted: var(--ui-dark-muted);
+  --ui-border: var(--ui-dark-border);
+  --ui-link: var(--ui-dark-link);
+  --ui-selection: var(--ui-dark-selection);
+  --ui-select-arrow: var(--ui-dark-select-arrow);
+}
+.platform-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.brand-identity {
+  display: contents;
+}
+.brand-identity.brand-logo-only {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+.brand-logo-only .platform-logo {
+  width: min(160px, 100%);
+  height: 48px;
+}
+.brand-collapsed-logo {
+  display: none;
+}
+@media (min-width: 761px) {
+  .sidebar-collapsed .brand-expanded-logo {
+    display: none;
+  }
+  .sidebar-collapsed .brand-collapsed-logo {
+    display: block;
+  }
+  .sidebar-collapsed .platform-logo {
+    width: 30px;
+    height: 30px;
+  }
+}
+.logo-word {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.branding-refresh-error {
+  position: fixed;
+  bottom: 8px;
+  right: 8px;
+  z-index: 100;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  background: #fff2e8;
+  color: #843924;
+  border-radius: 6px;
+}

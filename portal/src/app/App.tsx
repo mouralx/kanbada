@@ -40,11 +40,13 @@ import { fileRepository } from '../infrastructure/attachments';
 import { repository } from '../infrastructure/workspaceRepository';
 import { useI18n, type Locale } from '../shared/i18n';
 import { ThemeSelect } from '../shared/Theme';
+import { useBranding } from '../shared/PlatformBranding';
 import { useWorkspaceLocation } from './hooks/useWorkspaceLocation';
 import { useWorkspaceSave } from './hooks/useWorkspaceSave';
 import { Sidebar } from './Sidebar';
 import { WorkspaceDialogs } from './WorkspaceDialogs';
 export function App() {
+  const { branding } = useBranding();
   const { t, locale, setLocale } = useI18n();
   const [projectId, setProjectId] = useState('website');
   const [page, setPage] = useState('Projects');
@@ -95,7 +97,7 @@ export function App() {
     setUploading(false);
   }, [draft?.id]);
   useEffect(() => {
-    if (!apiEnabled || !data || draft || modal || saving) return;
+    if (!apiEnabled || !data || draft || (modal && modal !== 'Notifications') || saving) return;
     let cancelled = false;
     const timer = setInterval(() => {
       repository
@@ -172,7 +174,7 @@ export function App() {
   if (!data)
     return (
       <div className="loading">
-        {t('kanbada')}
+        {branding.name}
         <span>{t('Making room for great work\u2026')}</span>
       </div>
     );
@@ -204,6 +206,10 @@ export function App() {
   const updateTask = async (task: Task) => {
     if (uploading || saving) return;
     const previous = data.tasks.find((t) => t.id === task.id);
+    if (previous?.readOnly) {
+      setToast('This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.');
+      return;
+    }
     const updated = recordChanges(previous, task, currentMember.name);
     const next = {
       ...data,
@@ -461,6 +467,10 @@ export function App() {
   const move = (id: string, value: string, lane: (typeof lanes)[number]) => {
     const task = data.tasks.find((t) => t.id === id);
     if (!task) return;
+    if (task.readOnly) {
+      setToast('This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.');
+      return;
+    }
     if (lane.project && task.project !== lane.project) {
       setToast('Choose a swimlane in this card’s project');
       return;

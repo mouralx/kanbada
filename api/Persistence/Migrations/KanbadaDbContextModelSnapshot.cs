@@ -399,6 +399,222 @@ namespace Kanbada.Api.Persistence.Migrations
                     b.ToTable("identities", (string)null);
                 });
 
+            modelBuilder.Entity("Kanbada.Api.JiraApprovedHostEntity", b =>
+                {
+                    b.Property<string>("Authority")
+                        .HasColumnType("text")
+                        .HasColumnName("authority");
+
+                    b.Property<DateTimeOffset>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.HasKey("Authority");
+
+                    b.ToTable("jira_approved_hosts", (string)null);
+                });
+
+            modelBuilder.Entity("Kanbada.Api.JiraConnectionEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BaseUrl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("base_url");
+
+                    b.Property<string>("Cron")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("cron");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("direction");
+
+                    b.Property<string>("Edition")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("edition");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("IssueTypeId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("issue_type_id");
+
+                    b.Property<string>("JiraProjectKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("jira_project_key");
+
+                    b.Property<string>("Jql")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("jql");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset?>("LastFinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_finished_at");
+
+                    b.Property<DateTimeOffset?>("LastStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_started_at");
+
+                    b.Property<int>("LastSyncedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_synced_count");
+
+                    b.Property<DateTimeOffset>("NextRunAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_run_at");
+
+                    b.Property<string>("ProjectId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("ProtectedToken")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_token");
+
+                    b.Property<DateTimeOffset?>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<bool>("SyncAssignees")
+                        .HasColumnType("boolean")
+                        .HasColumnName("sync_assignees");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("time_zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Enabled", "NextRunAt");
+
+                    b.HasIndex("WorkspaceId", "ProjectId")
+                        .IsUnique();
+
+                    b.ToTable("jira_connections", (string)null);
+                });
+
+            modelBuilder.Entity("Kanbada.Api.JiraLinkEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CardId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("card_id");
+
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<bool>("CreationPending")
+                        .HasColumnType("boolean")
+                        .HasColumnName("creation_pending");
+
+                    b.Property<string>("JiraHash")
+                        .HasColumnType("text")
+                        .HasColumnName("jira_hash");
+
+                    b.Property<string>("JiraIssueId")
+                        .HasColumnType("text")
+                        .HasColumnName("jira_issue_id");
+
+                    b.Property<string>("JiraKey")
+                        .HasColumnType("text")
+                        .HasColumnName("jira_key");
+
+                    b.Property<string>("KanbadaHash")
+                        .HasColumnType("text")
+                        .HasColumnName("kanbada_hash");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset?>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_synced_at");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("origin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConnectionId", "CardId")
+                        .IsUnique();
+
+                    b.HasIndex("ConnectionId", "JiraIssueId")
+                        .IsUnique();
+
+                    b.ToTable("jira_links", (string)null);
+                });
+
+            modelBuilder.Entity("Kanbada.Api.JiraMappingEntity", b =>
+                {
+                    b.Property<Guid>("ConnectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connection_id");
+
+                    b.Property<string>("Kind")
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("JiraValue")
+                        .HasColumnType("text")
+                        .HasColumnName("jira_value");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("KanbadaValue")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kanbada_value");
+
+                    b.HasKey("ConnectionId", "Kind", "JiraValue");
+
+                    b.ToTable("jira_mappings", (string)null);
+                });
+
             modelBuilder.Entity("Kanbada.Api.LabelEntity", b =>
                 {
                     b.Property<Guid>("WorkspaceId")
@@ -423,11 +639,21 @@ namespace Kanbada.Api.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name");
 
+                    b.Property<string>("NormalizedName")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasColumnName("normalized_name")
+                        .HasComputedColumnSql("lower(btrim(name))", true);
+
                     b.Property<int>("Position")
                         .HasColumnType("integer")
                         .HasColumnName("position");
 
                     b.HasKey("WorkspaceId", "Id");
+
+                    b.HasIndex("WorkspaceId", "NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("labels_workspace_normalized_name");
 
                     b.ToTable("labels", (string)null);
                 });
@@ -504,6 +730,10 @@ namespace Kanbada.Api.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("at");
 
+                    b.Property<string>("CardId")
+                        .HasColumnType("text")
+                        .HasColumnName("card_id");
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("text")
@@ -513,9 +743,124 @@ namespace Kanbada.Api.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("position");
 
+                    b.Property<Guid?>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
                     b.HasKey("WorkspaceId", "Id");
 
-                    b.ToTable("notifications", (string)null);
+                    b.HasIndex("RecipientId");
+
+                    b.ToTable("notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("notifications_assignment_recipient", "(recipient_id IS NULL) = (card_id IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Kanbada.Api.PlatformBrandingEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Accent")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("accent");
+
+                    b.Property<string>("CollapsedLogo")
+                        .HasColumnType("text")
+                        .HasColumnName("collapsed_logo");
+
+                    b.Property<int>("CornerRadius")
+                        .HasColumnType("integer")
+                        .HasColumnName("corner_radius");
+
+                    b.Property<string>("DarkBackground")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("dark_background");
+
+                    b.Property<string>("DarkBorder")
+                        .HasColumnType("text")
+                        .HasColumnName("dark_border");
+
+                    b.Property<string>("DarkSurface")
+                        .HasColumnType("text")
+                        .HasColumnName("dark_surface");
+
+                    b.Property<string>("DarkText")
+                        .HasColumnType("text")
+                        .HasColumnName("dark_text");
+
+                    b.Property<string>("DefaultTheme")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("default_theme");
+
+                    b.Property<string>("FontFamily")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("font_family");
+
+                    b.Property<int>("FontScale")
+                        .HasColumnType("integer")
+                        .HasColumnName("font_scale");
+
+                    b.Property<string>("LightBackground")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("light_background");
+
+                    b.Property<string>("LightBorder")
+                        .HasColumnType("text")
+                        .HasColumnName("light_border");
+
+                    b.Property<string>("LightSurface")
+                        .HasColumnType("text")
+                        .HasColumnName("light_surface");
+
+                    b.Property<string>("LightText")
+                        .HasColumnType("text")
+                        .HasColumnName("light_text");
+
+                    b.Property<string>("Logo")
+                        .HasColumnType("text")
+                        .HasColumnName("logo");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Primary")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("primary");
+
+                    b.Property<bool>("ShowName")
+                        .HasColumnType("boolean")
+                        .HasColumnName("show_name");
+
+                    b.Property<string>("SidebarBackground")
+                        .HasColumnType("text")
+                        .HasColumnName("sidebar_background");
+
+                    b.Property<string>("SidebarText")
+                        .HasColumnType("text")
+                        .HasColumnName("sidebar_text");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("platform_branding", null, t =>
+                        {
+                            t.HasCheckConstraint("platform_branding_singleton", "id = 1");
+                        });
                 });
 
             modelBuilder.Entity("Kanbada.Api.ProjectEntity", b =>
@@ -1047,6 +1392,33 @@ namespace Kanbada.Api.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Kanbada.Api.JiraConnectionEntity", b =>
+                {
+                    b.HasOne("Kanbada.Api.ProjectEntity", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId", "ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Kanbada.Api.JiraLinkEntity", b =>
+                {
+                    b.HasOne("Kanbada.Api.JiraConnectionEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Kanbada.Api.JiraMappingEntity", b =>
+                {
+                    b.HasOne("Kanbada.Api.JiraConnectionEntity", null)
+                        .WithMany("Mappings")
+                        .HasForeignKey("ConnectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Kanbada.Api.LabelEntity", b =>
                 {
                     b.HasOne("Kanbada.Api.WorkspaceEntity", null)
@@ -1072,6 +1444,11 @@ namespace Kanbada.Api.Persistence.Migrations
 
             modelBuilder.Entity("Kanbada.Api.NotificationEntity", b =>
                 {
+                    b.HasOne("Kanbada.Api.UserEntity", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Kanbada.Api.WorkspaceEntity", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
@@ -1158,6 +1535,11 @@ namespace Kanbada.Api.Persistence.Migrations
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Kanbada.Api.JiraConnectionEntity", b =>
+                {
+                    b.Navigation("Mappings");
                 });
 #pragma warning restore 612, 618
         }

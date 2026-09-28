@@ -1,4 +1,5 @@
 node_modules/
 dist/
 src/styles/dark.css
+src/styles/theme-components.css
 package-lock.json

@@ -1,5 +1,7 @@
 using Kanbada.Api;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using System.Text.Json.Nodes;
@@ -7,6 +9,73 @@ using Xunit;
 
 public sealed class RelationalMigrationTests
 {
+    [Fact]
+    public async Task DuplicateLabelsMergePreservingCardsAndEnforcingUniqueness()
+    {
+        var fixture = new ApiFixture();
+        await fixture.InitializeAsync();
+        try
+        {
+            using var client = fixture.Client();
+            await using var scope = fixture.Factory.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
+            var user = new UserEntity { Id = Guid.NewGuid(), Email = "labels@example.test", Name = "Owner" };
+            db.Add(user);
+            await db.SaveChangesAsync();
+            var workspace = await scope.ServiceProvider.GetRequiredService<WorkspaceStore>().Create(user.Id, "Labels");
+            db.Add(new LabelEntity { WorkspaceId = workspace, Id = "original", Name = "Frontend", Color = "#123456", Complete = true });
+            db.Add(new CardEntity { WorkspaceId = workspace, Id = "KB-ONE", ProjectId = "my-activities", Title = "One", StatusId = "backlog", Priority = "Medium" });
+            db.Add(new CardEntity { WorkspaceId = workspace, Id = "KB-TWO", ProjectId = "my-activities", Title = "Two", StatusId = "backlog", Priority = "Medium" });
+            await db.SaveChangesAsync();
+            var version = await db.Workspaces.Where(w => w.Id == workspace).Select(w => w.Version).SingleAsync();
+            var migrator = db.GetService<IMigrator>();
+            await migrator.MigrateAsync("20260925094816_JiraHostApprovals");
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO labels(workspace_id,id,name,color,complete,position)
+                VALUES ({workspace},'jira-copy',' frontend ','#abcdef',false,1),
+                       ({workspace},'jira-copy-2','FRONTEND','#abcdef',false,2);
+                INSERT INTO card_labels(workspace_id,card_id,label_id,position)
+                VALUES ({workspace},'KB-ONE','original',0),
+                       ({workspace},'KB-ONE','jira-copy',1),
+                       ({workspace},'KB-TWO','jira-copy',0),
+                       ({workspace},'KB-TWO','jira-copy-2',1);
+                """);
+            await db.Database.MigrateAsync();
+            db.ChangeTracker.Clear();
+            var label = await db.Labels.SingleAsync(l => l.WorkspaceId == workspace);
+            Assert.Equal("original", label.Id);
+            Assert.Equal("Frontend", label.Name);
+            Assert.Equal("#123456", label.Color);
+            Assert.True(label.Complete);
+            var associations = await db.CardLabels.Where(l => l.WorkspaceId == workspace).ToListAsync();
+            Assert.Equal(2, associations.Count);
+            Assert.All(associations, l => Assert.Equal("original", l.LabelId));
+            Assert.Equal(version + 1, await db.Workspaces.Where(w => w.Id == workspace).Select(w => w.Version).SingleAsync());
+            var state = await scope.ServiceProvider.GetRequiredService<WorkspaceStore>().Read(workspace, user.Id);
+            WorkspaceValidator.Validate(state.State, false);
+
+            var duplicate = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO labels(workspace_id,id,name,color,complete,position)
+                VALUES ({workspace},'duplicate',' FRONTEND ','#abcdef',false,1)
+                """));
+            Assert.Equal("23505", duplicate.SqlState);
+            Assert.Equal("labels_workspace_normalized_name", duplicate.ConstraintName);
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO labels(workspace_id,id,name,color,complete,position)
+                VALUES ({workspace},'second','Second','#abcdef',false,1)
+                """);
+            await using (var tx = await db.Database.BeginTransactionAsync())
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE labels SET name='Second' WHERE workspace_id={workspace} AND id='original'");
+                await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE labels SET name='Frontend' WHERE workspace_id={workspace} AND id='second'");
+                await tx.CommitAsync();
+            }
+            await db.Database.MigrateAsync();
+            Assert.Equal(2, await db.Labels.CountAsync(l => l.WorkspaceId == workspace));
+        }
+        finally { await fixture.DisposeAsync(); }
+    }
+
     [Fact]
     public async Task ExistingDocumentsMigrateWithoutLosingBusinessDataOrCredentials()
     {

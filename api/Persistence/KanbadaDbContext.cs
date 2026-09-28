@@ -31,6 +31,41 @@ public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options)
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<JiraApprovedHostEntity>(e =>
+        {
+            e.ToTable("jira_approved_hosts");
+            e.HasKey(x => x.Authority);
+        });
+        model.Entity<PlatformBrandingEntity>(e =>
+        {
+            e.ToTable("platform_branding", t => t.HasCheckConstraint("platform_branding_singleton", "id = 1"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Version).IsConcurrencyToken();
+        });
+        model.Entity<JiraConnectionEntity>(e =>
+        {
+            e.ToTable("jira_connections");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.WorkspaceId, x.ProjectId }).IsUnique();
+            e.HasOne<ProjectEntity>().WithMany().HasForeignKey(x => new { x.WorkspaceId, x.ProjectId }).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasMany(x => x.Mappings).WithOne().HasForeignKey(x => x.ConnectionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.Enabled, x.NextRunAt });
+        });
+        model.Entity<JiraMappingEntity>(e =>
+        {
+            e.ToTable("jira_mappings");
+            e.HasKey(x => new { x.ConnectionId, x.Kind, x.JiraValue });
+        });
+        model.Entity<JiraLinkEntity>(e =>
+        {
+            e.ToTable("jira_links");
+            e.HasKey(x => x.Id);
+            e.HasOne<JiraConnectionEntity>().WithMany().HasForeignKey(x => x.ConnectionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ConnectionId, x.CardId }).IsUnique();
+            e.HasIndex(x => new { x.ConnectionId, x.JiraIssueId }).IsUnique();
+        });
         model.Entity<UserEntity>(e =>
         {
             e.ToTable("users", t => t.HasCheckConstraint("users_normalized_email", "email = lower(email)"));
@@ -116,6 +151,8 @@ public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options)
         {
             e.ToTable("labels");
             e.HasKey(x => new { x.WorkspaceId, x.Id });
+            e.Property<string>("NormalizedName").HasComputedColumnSql("lower(btrim(name))", stored: true);
+            e.HasIndex("WorkspaceId", "NormalizedName").IsUnique().HasDatabaseName("labels_workspace_normalized_name");
             e.HasOne<WorkspaceEntity>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
         });
         model.Entity<SwimlaneEntity>(e =>
@@ -202,9 +239,10 @@ public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options)
         });
         model.Entity<NotificationEntity>(e =>
         {
-            e.ToTable("notifications");
+            e.ToTable("notifications", t => t.HasCheckConstraint("notifications_assignment_recipient", "(recipient_id IS NULL) = (card_id IS NULL)"));
             e.HasKey(x => new { x.WorkspaceId, x.Id });
             e.HasOne<WorkspaceEntity>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<UserEntity>().WithMany().HasForeignKey(x => x.RecipientId).OnDelete(DeleteBehavior.Cascade);
         });
         foreach (var entity in model.Model.GetEntityTypes())
             foreach (var property in entity.GetProperties())

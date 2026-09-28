@@ -47,7 +47,23 @@ try {
   await page.getByLabel('Search help').fill('nothing-matches-here');
   await expect(page.getByText('No matching answers', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Show all topics', exact: true }).click();
-  await expect(page.locator('.help-articles details')).toHaveCount(38);
+  await expect(page.locator('.help-articles details')).toHaveCount(56);
+  for (const [query, title] of [
+    ['SVG', 'Which logo formats can I upload, including SVG?'],
+    ['recovery codes', 'What if I lose my authenticator or need new recovery codes?'],
+    ['JQL', 'How does JQL limit synchronization, and which fields are included?'],
+    ['read-only', 'Why is my Jira card locked, and how do I open it in Jira?'],
+  ]) {
+    await page.getByLabel('Search help').fill(query);
+    await page.getByText(title, { exact: true }).click();
+    await expect(page.locator('.help-articles details[open] p').last()).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Clear help search', exact: true }).click();
+  await page
+    .locator('.help-categories')
+    .getByRole('button', { name: /^Jira synchronization/ })
+    .click();
+  await expect(page.locator('.help-articles details')).toHaveCount(10);
   await page.getByRole('button', { name: 'My activities', exact: true }).click();
   await page.getByRole('button', { name: 'Add task', exact: true }).first().click();
   await page.getByLabel('Task title').fill('PostgreSQL card');
@@ -57,6 +73,62 @@ try {
   await page.reload();
   await expect(page.getByRole('article', { name: 'Open PostgreSQL card' })).toBeVisible();
   await page.getByRole('article', { name: 'Open PostgreSQL card' }).click();
+  let failSharingLoad = true;
+  await page.route(/\/api\/workspaces\/[^/]+\/cards\/[^/]+\/share$/, async (route) => {
+    if (route.request().method() === 'GET' && failSharingLoad) {
+      return route.fulfill({
+        status: 503,
+        json: { detail: 'Sharing service temporarily unavailable.' },
+      });
+    }
+    return route.fallback();
+  });
+  await page.getByRole('button', { name: 'Share link', exact: true }).click();
+  const sharing = page.locator('.share-form');
+  await expect(sharing.getByRole('alert')).toHaveText('Sharing service temporarily unavailable.');
+  await expect(
+    sharing.getByRole('button', { name: 'Create share link', exact: true }),
+  ).toBeDisabled();
+  failSharingLoad = false;
+  await sharing.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(
+    sharing.getByRole('button', { name: 'Create share link', exact: true }),
+  ).toBeEnabled();
+  await expect(sharing.getByRole('alert')).toHaveCount(0);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1050 });
+    const dropdowns = await sharing.locator('select').evaluateAll((elements) =>
+      elements.map((element) => {
+        const style = getComputedStyle(element);
+        return {
+          height: element.getBoundingClientRect().height,
+          padding: parseFloat(style.paddingRight),
+          radius: parseFloat(style.borderRadius),
+        };
+      }),
+    );
+    assert.ok(
+      dropdowns.every(
+        (control) => control.height >= 30 && control.padding >= 34 && control.radius > 0,
+      ),
+    );
+    if (process.env.KANBADA_SCREENSHOT_DIR)
+      await page.screenshot({
+        path: `${process.env.KANBADA_SCREENSHOT_DIR}/sharing-${width}.png`,
+      });
+  }
+  await page.setViewportSize({ width: 1440, height: 1050 });
+  await sharing.getByLabel('Link access').selectOption('members');
+  await sharing.getByLabel('Link expiration').selectOption('7');
+  await sharing.getByRole('button', { name: 'Create share link', exact: true }).click();
+  await expect(sharing.getByLabel('Share link', { exact: true })).toHaveValue(/\?share=/);
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await page.getByRole('button', { name: 'Share link', exact: true }).click();
+  await expect(sharing.getByLabel('Link access')).toHaveValue('members');
+  await expect(sharing.getByLabel('Link expiration')).toHaveValue('7');
+  await sharing.getByRole('button', { name: 'Revoke link', exact: true }).click();
+  await expect(sharing.getByLabel('Share link', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await page.getByRole('tab', { name: /History/ }).click();
   await expect(page.getByText('Created card in Backlog', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -195,6 +267,15 @@ try {
   await expect(
     page.getByText('Como altero o nome, o email ou a fotografia de perfil?', { exact: true }),
   ).toBeVisible();
+  await page.getByLabel('Pesquisar ajuda').fill('autenticacao');
+  await page.getByText('Como configuro a autenticação de dois fatores?', { exact: true }).click();
+  await expect(page.getByText(/A autenticação de dois fatores é obrigatória/)).toBeVisible();
+  await page.getByRole('button', { name: 'Limpar pesquisa de ajuda', exact: true }).click();
+  await page
+    .locator('.help-categories')
+    .getByRole('button', { name: /^Sincronização Jira/ })
+    .click();
+  await expect(page.locator('.help-articles details')).toHaveCount(10);
   await page.getByLabel('Tema', { exact: true }).selectOption('dark');
   await page.setViewportSize({ width: 1440, height: 1050 });
   await page.screenshot({

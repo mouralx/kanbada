@@ -67,6 +67,20 @@ Workspace reads and writes:
 
 Projects, cards, comments, checklists, assignees, notifications, profile/workspace images, and workflow definitions are updated through compact versioned workspace PATCH operations. Related changes are grouped atomically, including a new card and its activity/notification. Standalone API clients can also use the dedicated card-creation command above. Labels/buckets/statuses are workspace-scoped; swimlanes reference a project.
 
+Cards expose a server-derived `readOnly` flag. Confirmed Jira-linked cards in
+Jira-to-Kanbada mode reject user edits, moves and deletion with HTTP 403, including
+changes to comments, checklists and attachments. PATCH cannot write `readOnly`;
+PUT cannot bypass the policy by omitting it. Unlinked cards remain editable.
+
+New assignments to registered members generate private assignment notifications
+in the same transaction. Workspace/notification reads return only the caller's
+assignment notifications alongside existing shared workspace notices. Assignment
+notifications include `cardId`; their `message` contains the assigned card's title.
+They can be dismissed through the normal notification-array changes, but cannot
+be forged or edited. Clearing your notifications does not clear another member's
+private notifications. Repeated saves/syncs with unchanged assignees do not notify
+again; unassigning and later reassigning creates a new notification.
+
 Files:
 
 - `POST /workspaces/{id}/files`: multipart field `file`, maximum 25 MiB; returns attachment metadata.

@@ -66,6 +66,147 @@ public sealed class ApiFixture : IAsyncLifetime
 
 public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 {
+    [Fact]
+    public async Task AssignmentNotificationsArePrivateIdempotentAndIndependentlyDismissed()
+    {
+        var (owner, _) = await User();
+        var (recipient, recipientEmail) = await User();
+        using (owner)
+        using (recipient)
+        {
+            var initial = await Body(await owner.GetAsync("/api/workspaces/studio"));
+            using var lookup = fixture.Factory.Services.CreateScope();
+            var workspace = await lookup.ServiceProvider.GetRequiredService<WorkspaceResolver>()
+                .WorkspaceId("studio", Guid.Parse(initial["workspace"]!["ownerId"]!.GetValue<string>()));
+            var path = "/api/workspaces/" + workspace;
+            string memberName;
+            using (var scope = fixture.Factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
+                var user = await db.Users.SingleAsync(u => u.Email == recipientEmail);
+                memberName = user.Name;
+                db.Add(new MemberEntity
+                {
+                    WorkspaceId = workspace,
+                    Email = user.Email,
+                    UserId = user.Id,
+                    Name = user.Name,
+                    Initials = "TM",
+                    Color = "#123456",
+                    Photo = user.Photo,
+                    Position = 1
+                });
+                await db.SaveChangesAsync();
+            }
+            var card = await Body(await owner.PostAsJsonAsync(path + "/cards", new { title = "Assigned notification", assignees = new[] { memberName } }));
+            var assigned = await Body(await recipient.GetAsync(path));
+            var notification = Assert.Single(assigned["notifications"]!.AsArray());
+            Assert.Equal(card["id"]!.ToString(), notification!["cardId"]!.ToString());
+            Assert.Equal("Assigned notification", notification["message"]!.ToString());
+            Assert.Empty((await Body(await owner.GetAsync(path)))["notifications"]!.AsArray());
+            await Save(owner, await Body(await owner.GetAsync(path)));
+            assigned = await Body(await recipient.GetAsync(path));
+            Assert.Single(assigned["notifications"]!.AsArray());
+            var ownerState = await Body(await owner.GetAsync(path));
+            ownerState["notifications"]!.AsArray().Add(notification.DeepClone());
+            using (var spoof = new HttpRequestMessage(HttpMethod.Put, path))
+            {
+                spoof.Headers.TryAddWithoutValidation("If-Match", ownerState["version"]!.ToString());
+                spoof.Content = JsonContent.Create(ownerState);
+                using var response = await owner.SendAsync(spoof);
+                Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            }
+            assigned["notifications"] = new JsonArray();
+            await Save(recipient, assigned);
+            Assert.Empty((await Body(await recipient.GetAsync(path)))["notifications"]!.AsArray());
+            await Save(owner, await Body(await owner.GetAsync(path)));
+            Assert.Empty((await Body(await recipient.GetAsync(path)))["notifications"]!.AsArray());
+            ownerState = await Body(await owner.GetAsync(path));
+            ownerState["tasks"]![0]!["assignees"] = new JsonArray();
+            await Save(owner, ownerState);
+            ownerState = await Body(await owner.GetAsync(path));
+            ownerState["tasks"]![0]!["assignees"] = new JsonArray(memberName);
+            await Save(owner, ownerState);
+            Assert.Single((await Body(await recipient.GetAsync(path)))["notifications"]!.AsArray());
+        }
+    }
+
+    [Fact]
+    public async Task JiraInboundCardsRejectEditsDeletesAndFlagSpoofing()
+    {
+        var (client, _) = await User();
+        using (client)
+        {
+            var created = await Body(await client.PostAsJsonAsync("/api/workspaces/studio/cards", new { title = "Jira managed" }));
+            var cardId = created["id"]!.GetValue<string>();
+            var initial = await Body(await client.GetAsync("/api/workspaces/studio"));
+            using var lookup = fixture.Factory.Services.CreateScope();
+            var workspace = await lookup.ServiceProvider.GetRequiredService<WorkspaceResolver>()
+                .WorkspaceId("studio", Guid.Parse(initial["workspace"]!["ownerId"]!.GetValue<string>()));
+            var connectionId = Guid.NewGuid();
+            using (var scope = fixture.Factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
+                db.Add(new JiraConnectionEntity
+                {
+                    Id = connectionId,
+                    WorkspaceId = workspace,
+                    ProjectId = "my-activities",
+                    BaseUrl = "https://example.atlassian.net/",
+                    Edition = "cloud",
+                    JiraProjectKey = "TEAM",
+                    Direction = "jira-to-kanbada",
+                    NextRunAt = DateTimeOffset.UtcNow
+                });
+                db.Add(new JiraLinkEntity { Id = Guid.NewGuid(), ConnectionId = connectionId, CardId = cardId, JiraIssueId = "101", JiraKey = "TEAM-101", Origin = "jira" });
+                await JiraCardPolicy.InvalidateWorkspace(db, workspace, default);
+                await db.SaveChangesAsync();
+            }
+            var state = await Body(await client.GetAsync("/api/workspaces/studio"));
+            var task = state["tasks"]!.AsArray().Single(t => t!["id"]!.GetValue<string>() == cardId)!;
+            Assert.True(task["readOnly"]!.GetValue<bool>());
+            var index = state["tasks"]!.AsArray().IndexOf(task);
+            async Task<HttpStatusCode> Patch(string op, string path, JsonNode? value)
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Patch, "/api/workspaces/studio");
+                request.Headers.TryAddWithoutValidation("If-Match", state["version"]!.ToString());
+                request.Content = JsonContent.Create(new { changes = new[] { new { op, path, value } } });
+                using var response = await client.SendAsync(request);
+                return response.StatusCode;
+            }
+            Assert.Equal(HttpStatusCode.Forbidden, await Patch("replace", $"/tasks/{index}/title", JsonValue.Create("Cannot edit")));
+            Assert.Equal(HttpStatusCode.Forbidden, await Patch("replace", $"/tasks/{index}/description", JsonValue.Create("Cannot edit")));
+            Assert.Equal(HttpStatusCode.Forbidden, await Patch("replace", $"/tasks/{index}/comments", new JsonArray("Cannot comment")));
+            Assert.Equal(HttpStatusCode.Forbidden, await Patch("replace", $"/tasks/{index}/checklist", new JsonArray(new JsonObject { ["text"] = "Cannot add", ["done"] = false })));
+            Assert.Equal(HttpStatusCode.BadRequest, await Patch("replace", $"/tasks/{index}/readOnly", JsonValue.Create(false)));
+            Assert.Equal(HttpStatusCode.Forbidden, await Patch("remove", $"/tasks/{index}", null));
+            task.AsObject().Remove("readOnly");
+            task["title"] = "Spoofed PUT";
+            using (var request = new HttpRequestMessage(HttpMethod.Put, "/api/workspaces/studio"))
+            {
+                request.Headers.TryAddWithoutValidation("If-Match", state["version"]!.ToString());
+                request.Content = JsonContent.Create(state);
+                using var response = await client.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            }
+            var local = await Body(await client.PostAsJsonAsync("/api/workspaces/studio/cards", new { title = "Unlinked stays editable" }));
+            Assert.False(local["readOnly"]!.GetValue<bool>());
+            using (var scope = fixture.Factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
+                var c = await db.Set<JiraConnectionEntity>().SingleAsync(c => c.Id == connectionId);
+                var settings = scope.ServiceProvider.GetRequiredService<JiraSettings>();
+                await settings.Save(workspace, c.ProjectId, new JiraConnectionInput(c.Version, c.BaseUrl, "cloud",
+                    "jira@example.test", "test-token", "project = TEAM", "TEAM", "10001", "bidirectional",
+                    "* * * * *", "UTC", false, [new("status", "backlog", "10"), new("priority", "Low", "1"),
+                        new("priority", "Medium", "2"), new("priority", "High", "3")]), default);
+            }
+            state = await Body(await client.GetAsync("/api/workspaces/studio"));
+            Assert.False(state["tasks"]![index]!["readOnly"]!.GetValue<bool>());
+            Assert.Equal(HttpStatusCode.OK, await Patch("replace", $"/tasks/{index}/title", JsonValue.Create("Editable again")));
+        }
+    }
+
     private readonly Dictionary<string, string> loginCodes = new();
     static async Task<JsonObject> Body(HttpResponseMessage response)
     {
@@ -298,6 +439,10 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             state = await Save(owner, state);
             Assert.Equal(bytes, await owner.GetByteArrayAsync("/api/files/" + file["id"]));
             Assert.Equal(HttpStatusCode.NotFound, (await viewer.GetAsync("/api/files/" + file["id"])).StatusCode);
+            var emptyShare = await owner.GetAsync("/api/workspaces/studio/cards/KB-ABCDEF12/share");
+            Assert.Equal(HttpStatusCode.OK, emptyShare.StatusCode);
+            Assert.Equal("application/json", emptyShare.Content.Headers.ContentType!.MediaType);
+            Assert.Equal("null", await emptyShare.Content.ReadAsStringAsync());
             var restricted = await Body(await owner.PostAsJsonAsync("/api/workspaces/studio/cards/KB-ABCDEF12/share", new { access = "members", days = 7 }));
             Assert.Equal(HttpStatusCode.Forbidden, (await viewer.GetAsync("/api/shares/" + restricted["token"])).StatusCode);
             var share = await Body(await owner.PostAsJsonAsync("/api/workspaces/studio/cards/KB-ABCDEF12/share", new { access = "signed-in", days = 7 }));

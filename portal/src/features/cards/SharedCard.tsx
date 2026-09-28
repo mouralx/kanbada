@@ -9,6 +9,7 @@ import { ThemeSelect } from '../../shared/Theme';
 import { LogoutButton } from '../auth/AuthBoundary';
 import { InvitationView } from '../workspaces/InvitationView';
 import { CardLabels } from './CardLabels';
+import { Brand } from '../../shared/Brand';
 export function SharedCardRouter({ children }: { children: ReactNode }) {
   const params = new URLSearchParams(window.location.search);
   const invitation = params.get('invite');
@@ -60,7 +61,7 @@ function SharedCard({ token }: { token: string }) {
       <header>
         <a href="/">
           <ArrowLeft size={15} />
-          kanbada
+          <Brand />
         </a>
         <ThemeSelect compact />
         <LogoutButton />

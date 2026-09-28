@@ -8,7 +8,14 @@ The API signs a protected `kanbada_session` cookie using ASP.NET Core cookie aut
 
 The portal refreshes session state on focus, once a minute, across tabs, and after a 401. It stores a non-secret cross-tab notification, not authentication tokens. Profile photos and workspace membership display details remain in workspace state; changing your own display name also updates your account's session display name. Login email is read-only in the API-backed profile form.
 
-There is currently no password reset, verified-email delivery, MFA, or account recovery UI. Add those flows before making password accounts subject to recovery or verification requirements. Do not represent browser-only local mode as secure login.
+Registration requires a profile photo and authenticator-based two-factor enrollment.
+Users save single-use recovery codes during enrollment and can generate a new set
+from Profile; doing so invalidates the previous set. Profile also supports changing
+a local password with the current password and an authenticator or recovery code,
+revoking other sessions. There is no email-based password reset, verified-email
+delivery or self-service recovery after losing both the authenticator and recovery
+codes. Provider-only accounts change passwords with their provider. Do not represent
+browser-only local mode as secure login.
 
 ## Google
 

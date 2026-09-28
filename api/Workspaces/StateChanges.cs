@@ -66,7 +66,7 @@ public static class StateChanges
                 throw new ApiError(400, "This path is not editable.");
             if (keys[0] == "workspace" && (keys.Length != 2 || keys[1] is not ("name" or "icon" or "banner" or "bannerPosition")))
                 throw new ApiError(400, "This workspace field is server-controlled.");
-            if (keys.Length >= 3 && ((keys[0] == "tasks" && keys[2] == "history") || (keys[0] == "members" && keys[2] is "userId" or "invitationToken")))
+            if (keys.Length >= 3 && ((keys[0] == "tasks" && keys[2] is "history" or "readOnly") || (keys[0] == "members" && keys[2] is "userId" or "invitationToken")))
                 throw new ApiError(400, "This field is server-controlled.");
             JsonNode? parent = result;
             foreach (var key in keys[..^1]) parent = Child(parent, key);

@@ -1,0 +1,292 @@
+.platform-heading-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--jira-accent);
+  background: var(--jira-input);
+  border: 1px solid var(--line);
+}
+.platform-settings-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.platform-settings-columns > * {
+  min-width: 0;
+}
+.platform-logo-editor {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 20px;
+}
+.platform-logo-editor > div {
+  min-width: 0;
+}
+.platform-logo-heading {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.platform-logo-tile {
+  width: 70px;
+  height: 70px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--jira-input);
+  color: var(--jira-muted);
+}
+.platform-logo-tile img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+.platform-settings .platform-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--jira-accent);
+  background: var(--jira-input);
+  cursor: pointer;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.platform-upload input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.platform-upload:focus-within {
+  outline: 2px solid var(--jira-accent);
+  outline-offset: 3px;
+}
+.platform-colors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.platform-color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: var(--jira-input);
+  border-radius: 6px;
+  padding: 6px;
+}
+.platform-settings .platform-color-field input[type='color'] {
+  width: 30px;
+  min-height: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.platform-settings .platform-color-field input[type='text'] {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+}
+.platform-color-group h3 {
+  font-size: 13px;
+  margin: 16px 0 12px;
+}
+.platform-auto-color {
+  font-size: 11px;
+  color: var(--jira-accent);
+  padding: 6px 0;
+}
+.platform-auto-color[aria-pressed='true'] {
+  font-weight: 700;
+}
+.platform-range {
+  margin-top: 16px;
+}
+.platform-range output {
+  font-variant-numeric: tabular-nums;
+}
+.platform-settings .platform-range input {
+  padding: 0;
+}
+.platform-color-field code {
+  font-size: 11px;
+  color: var(--jira-text);
+}
+.platform-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 8px;
+}
+.platform-preview-heading h3 {
+  font-size: 12px;
+  margin: 0;
+}
+.platform-preview-tabs {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.platform-preview-tabs button {
+  font-size: 10px;
+  padding: 6px 9px;
+  border-radius: 5px;
+  color: var(--jira-muted);
+}
+.platform-preview-tabs button[aria-pressed='true'] {
+  background: var(--jira-input);
+  color: var(--jira-text);
+}
+.platform-preview {
+  border: 1px solid var(--line);
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  border-radius: calc(10px * var(--ui-radius-scale));
+  overflow: hidden;
+}
+.platform-preview header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px;
+  background: var(--ui-sidebar);
+  color: var(--ui-sidebar-text);
+  border-bottom: 1px solid var(--ui-sidebar-border);
+}
+.platform-preview strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.platform-preview header.platform-preview-logo-only {
+  justify-content: center;
+}
+.platform-preview .platform-preview-logo-only img {
+  width: min(160px, 100%);
+  height: 48px;
+}
+.platform-preview img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.platform-preview-mark {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.platform-preview-mark i {
+  width: 5px;
+  height: 22px;
+  background: var(--ui-accent);
+  border-radius: 4px;
+}
+.platform-preview-mark i:nth-child(2) {
+  height: 15px;
+}
+.platform-preview section {
+  padding: 20px;
+}
+.platform-preview-caption {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 9px;
+  opacity: 0.7;
+}
+.platform-preview h3 {
+  font-family: var(--ui-font-heading);
+  font-size: calc(20px * var(--ui-font-scale));
+  margin: 12px 0;
+}
+.platform-preview-input {
+  margin-bottom: 8px;
+  background: var(--ui-field);
+  color: var(--ui-panel-text);
+  border: 1px solid var(--ui-border);
+  border-radius: calc(5px * var(--ui-radius-scale));
+  padding: 10px;
+  font-size: 10px;
+}
+.platform-preview-button {
+  display: block;
+  padding: 10px;
+  border-radius: calc(5px * var(--ui-radius-scale));
+  text-align: center;
+  font-size: 11px;
+  color: var(--ui-on-primary);
+  background: var(--ui-primary);
+}
+.platform-preview-nav {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+  font-size: 10px;
+  align-items: center;
+}
+.platform-preview-nav > :first-child {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+.platform-preview article {
+  background: var(--ui-surface);
+  color: var(--ui-panel-text);
+  padding: 15px;
+  border-radius: calc(6px * var(--ui-radius-scale));
+  border: 1px solid var(--ui-border);
+}
+.platform-preview h4 {
+  font-size: 12px;
+  margin: 10px 0;
+}
+.platform-preview small,
+.platform-preview-label {
+  font-size: 9px;
+}
+.platform-preview-label {
+  border: 1px solid var(--ui-accent);
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+.platform-preview-column > .jira-hint {
+  margin: 12px 0;
+}
+.platform-reset-actions {
+  display: flex;
+  gap: 8px;
+}
+.platform-settings .jira-section > .jira-hint {
+  margin-top: 12px;
+}
+@media (min-width: 901px) {
+  .platform-preview-column {
+    position: sticky;
+    top: 78px;
+  }
+}
+@media (max-width: 700px) {
+  .platform-settings-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .platform-preview-column {
+    margin-bottom: 20px;
+  }
+}

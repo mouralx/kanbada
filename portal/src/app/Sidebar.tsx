@@ -100,16 +100,6 @@ export function Sidebar({
           </div>,
           document.body,
         )}
-      <a
-        className="logo"
-        href="#"
-        onClick={(e) => {
-          e.preventDefault();
-          navigate('Projects');
-        }}
-      >
-        <Brand />
-      </a>
       <button
         className="sidebar-collapse-toggle"
         aria-label={sidebarCollapsed ? t('Expand sidebar') : t('Collapse sidebar')}
@@ -127,130 +117,151 @@ export function Sidebar({
       >
         {sidebarCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
       </button>
-      <button
-        aria-label={t('Switch workspace')}
-        title={sidebarCollapsed ? undefined : data.workspace.name}
-        className="workspace"
-        onClick={() => setModal('Workspace')}
-      >
-        <span className="workspace-icon">
-          {data.workspace.icon ? (
-            <img src={data.workspace.icon} alt={t('Workspace icon')} />
-          ) : (
-            <>
-              {data.workspace.name[0].toUpperCase()}
-              <span>✳</span>
-            </>
-          )}
-        </span>
-        <span>
-          {data.workspace.name}
-          <small>
-            {data.members.length} {t('members')}
-          </small>
-        </span>
-        <ChevronDown size={15} />
-      </button>
-      <div className="nav-label">{t('WORKSPACE')}</div>
-      <nav>
-        {[
-          { name: 'Overview', icon: LayoutDashboard },
-          { name: 'My tasks', icon: CheckSquare },
-          { name: 'Projects', icon: Columns3 },
-          { name: 'Members', icon: Users },
-        ].map(({ name, icon: Icon }) => (
-          <button
-            aria-label={t(name)}
-            title={sidebarCollapsed ? undefined : t(name)}
-            key={name}
-            className={
-              page === name || (name === 'Projects' && page === 'Project directory') ? 'active' : ''
-            }
-            onClick={() => navigate(name === 'Projects' ? 'Project directory' : name)}
-          >
-            <Icon size={18} />
-            <span className="nav-text">{t(name)}</span>
-            {name === 'My tasks' && (
-              <span className="nav-count">
-                {
-                  activeTasks.filter((t) => t.assignees.includes(currentMember.name) && !isDone(t))
-                    .length
-                }
-              </span>
+      <div className="sidebar-scroll">
+        <a
+          className="logo"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('Projects');
+          }}
+        >
+          <Brand sidebar />
+        </a>
+        <button
+          aria-label={t('Switch workspace')}
+          title={sidebarCollapsed ? undefined : data.workspace.name}
+          className="workspace"
+          onClick={() => setModal('Workspace')}
+        >
+          <span className="workspace-icon">
+            {data.workspace.icon ? (
+              <img src={data.workspace.icon} alt={t('Workspace icon')} />
+            ) : (
+              <>
+                {data.workspace.name[0].toUpperCase()}
+                <span>✳</span>
+              </>
             )}
-          </button>
-        ))}
-      </nav>
-      <div className="nav-label projects-label">
-        {t('YOUR PROJECTS')}
-        <button aria-label={t('Create project')} onClick={() => setModal('New project')}>
-          <Plus size={16} />
-        </button>
-      </div>
-      <div className="project-nav">
-        {data.projects
-          .filter((p) => !p.archived)
-          .map((p) => (
-            <button
-              aria-label={isActivitiesProject(p) ? t('My activities') : p.name}
-              title={
-                sidebarCollapsed ? undefined : isActivitiesProject(p) ? t('My activities') : p.name
-              }
-              key={p.id}
-              className={project.id === p.id && page === 'Projects' ? 'selected' : ''}
-              onClick={() => {
-                setProjectId(p.id);
-                navigate('Projects');
-              }}
-            >
-              <span style={{ background: p.color }} />
-              <span className="project-nav-text">
-                {isActivitiesProject(p) ? t('My activities') : p.name}
-              </span>
-              {project.id === p.id && page === 'Projects' && <span className="project-indicator" />}
-            </button>
-          ))}
-      </div>
-      <button
-        aria-label={t('New project')}
-        title={sidebarCollapsed ? undefined : t('New project')}
-        className="new-project"
-        onClick={() => setModal('New project')}
-      >
-        <Plus size={16} />
-        <span className="nav-text">{t('New project')}</span>
-      </button>
-      <div className="sidebar-bottom">
-        <LogoutButton />
-        <button
-          aria-label={t('Settings')}
-          title={sidebarCollapsed ? undefined : t('Settings')}
-          onClick={() => setModal('Settings')}
-        >
-          <Settings size={17} />
-          <span className="nav-text">{t('Settings')}</span>
-        </button>
-        <button
-          aria-label={t('Help')}
-          title={sidebarCollapsed ? undefined : t('Help')}
-          onClick={() => navigate('Help')}
-        >
-          <CircleHelp size={17} />
-          <span className="nav-text">{t('Help')}</span>
-        </button>
-        <button
-          aria-label={t('Edit profile')}
-          title={sidebarCollapsed ? undefined : currentMember.name}
-          className="profile"
-          onClick={() => setModal('Profile')}
-        >
-          {avatar(currentMember.name)}
+          </span>
           <span>
-            {currentMember.name}
-            <small>{t('Personal account')}</small>
+            {data.workspace.name}
+            <small>
+              {data.members.length} {t('members')}
+            </small>
           </span>
           <ChevronDown size={15} />
         </button>
+        <div className="nav-label">{t('WORKSPACE')}</div>
+        <nav>
+          {[
+            { name: 'Overview', icon: LayoutDashboard },
+            { name: 'My tasks', icon: CheckSquare },
+            { name: 'Projects', icon: Columns3 },
+            { name: 'Members', icon: Users },
+          ].map(({ name, icon: Icon }) => (
+            <button
+              aria-label={t(name)}
+              title={sidebarCollapsed ? undefined : t(name)}
+              key={name}
+              className={
+                page === name || (name === 'Projects' && page === 'Project directory')
+                  ? 'active'
+                  : ''
+              }
+              onClick={() => navigate(name === 'Projects' ? 'Project directory' : name)}
+            >
+              <Icon size={18} />
+              <span className="nav-text">{t(name)}</span>
+              {name === 'My tasks' && (
+                <span className="nav-count">
+                  {
+                    activeTasks.filter(
+                      (t) => t.assignees.includes(currentMember.name) && !isDone(t),
+                    ).length
+                  }
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="nav-label projects-label">
+          {t('YOUR PROJECTS')}
+          <button aria-label={t('Create project')} onClick={() => setModal('New project')}>
+            <Plus size={16} />
+          </button>
+        </div>
+        <div className="project-nav">
+          {data.projects
+            .filter((p) => !p.archived)
+            .map((p) => (
+              <button
+                aria-label={isActivitiesProject(p) ? t('My activities') : p.name}
+                title={
+                  sidebarCollapsed
+                    ? undefined
+                    : isActivitiesProject(p)
+                      ? t('My activities')
+                      : p.name
+                }
+                key={p.id}
+                className={project.id === p.id && page === 'Projects' ? 'selected' : ''}
+                onClick={() => {
+                  setProjectId(p.id);
+                  navigate('Projects');
+                }}
+              >
+                <span style={{ background: p.color }} />
+                <span className="project-nav-text">
+                  {isActivitiesProject(p) ? t('My activities') : p.name}
+                </span>
+                {project.id === p.id && page === 'Projects' && (
+                  <span className="project-indicator" />
+                )}
+              </button>
+            ))}
+        </div>
+        <button
+          aria-label={t('New project')}
+          title={sidebarCollapsed ? undefined : t('New project')}
+          className="new-project"
+          onClick={() => setModal('New project')}
+        >
+          <Plus size={16} />
+          <span className="nav-text">{t('New project')}</span>
+        </button>
+        <div className="sidebar-bottom">
+          <LogoutButton />
+          <button
+            aria-label={t('Settings')}
+            title={sidebarCollapsed ? undefined : t('Settings')}
+            onClick={() => setModal('Settings')}
+          >
+            <Settings size={17} />
+            <span className="nav-text">{t('Settings')}</span>
+          </button>
+          <button
+            aria-label={t('Help')}
+            title={sidebarCollapsed ? undefined : t('Help')}
+            onClick={() => navigate('Help')}
+          >
+            <CircleHelp size={17} />
+            <span className="nav-text">{t('Help')}</span>
+          </button>
+          <button
+            aria-label={t('Edit profile')}
+            title={sidebarCollapsed ? undefined : currentMember.name}
+            className="profile"
+            onClick={() => setModal('Profile')}
+          >
+            {avatar(currentMember.name)}
+            <span>
+              {currentMember.name}
+              <small>{t('Personal account')}</small>
+            </span>
+            <ChevronDown size={15} />
+          </button>
+        </div>
       </div>
     </aside>
   );

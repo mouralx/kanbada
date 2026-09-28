@@ -371,7 +371,7 @@
 :root[data-theme="dark"] .popover label,:root[data-theme="dark"] .simple-form label,:root[data-theme="dark"] .task-fields label,:root[data-theme="dark"] .description-label {
     color: #a6a8ae
 }
-:root[data-theme="dark"] .popover select,:root[data-theme="dark"] .simple-form input,:root[data-theme="dark"] .simple-form textarea,:root[data-theme="dark"] .task-fields input,:root[data-theme="dark"] .task-fields select {
+:root[data-theme="dark"] .popover select,:root[data-theme="dark"] .simple-form input,:root[data-theme="dark"] .simple-form select,:root[data-theme="dark"] .simple-form textarea,:root[data-theme="dark"] .task-fields input,:root[data-theme="dark"] .task-fields select {
     border: 1px solid #383b42;
     background: #232529;
     color: #e5e5e7
