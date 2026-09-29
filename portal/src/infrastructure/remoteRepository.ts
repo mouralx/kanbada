@@ -1,4 +1,4 @@
-import { applyChanges, workspaceChanges, type ChangeResult } from './stateChanges';
+import { applyChanges, workspaceChanges, type Change, type ChangeResult } from './stateChanges';
 import type { Member, State, Workspace } from '../domain/models';
 import { accountStorage, accountStoragePrefix } from './accountStorage';
 import { ApiError, apiRequest } from './apiClient';
@@ -10,7 +10,7 @@ async function loadWorkspace(id: string): Promise<State> {
   const key = cacheKey(id);
   const cached = snapshots.get(key);
   const state = await apiRequest<State>(
-    '/workspaces/' + encodeURIComponent(id),
+    '/workspaces/' + encodeURIComponent(id) + '?metadataOnly=true',
     {
       headers: cached?.version === undefined ? {} : { 'If-None-Match': `"${cached.version}"` },
     },
@@ -34,19 +34,49 @@ export const remoteRepository = {
   async save(state: State, previous: State): Promise<State> {
     if (state.workspace.id !== previous.workspace.id || previous.version === undefined)
       throw new Error('Reload this workspace before saving.');
-    const changes = workspaceChanges(previous, state);
-    if (!changes.length) return structuredClone(previous);
+    const changes = workspaceChanges({ ...previous, tasks: [] }, { ...state, tasks: [] });
+    const oldCards = new Map(previous.tasks.map((task) => [task.id, task]));
+    const nextIds = new Set(state.tasks.map((task) => task.id));
+    const upserts = state.tasks
+      .filter((task) => JSON.stringify(task) !== JSON.stringify(oldCards.get(task.id)))
+      .map((task) => {
+        const old = oldCards.get(task.id);
+        return old
+          ? {
+              id: task.id,
+              changes: workspaceChanges(
+                { ...previous, tasks: [old] },
+                { ...previous, tasks: [task] },
+              ),
+            }
+          : { id: task.id, value: task };
+      })
+      .filter((edit) => !edit.changes || edit.changes.length);
+    const removed = previous.tasks.filter((task) => !nextIds.has(task.id)).map((task) => task.id);
+    if (!changes.length && !upserts.length && !removed.length) return structuredClone(previous);
     const key = cacheKey(state.workspace.id);
-    const result = await apiRequest<ChangeResult>(
-      '/workspaces/' + encodeURIComponent(state.workspace.id),
-      {
-        method: 'PATCH',
-        headers: { 'If-Match': String(previous.version) },
-        body: JSON.stringify({ changes }),
-      },
-    );
-    const saved = applyChanges(previous, result);
+    const result = await apiRequest<
+      ChangeResult & { cards: { id: string; changes: Change[] }[]; removed: string[] }
+    >('/workspaces/' + encodeURIComponent(state.workspace.id) + '/changes', {
+      method: 'PATCH',
+      headers: { 'If-Match': String(previous.version) },
+      body: JSON.stringify({
+        changes,
+        upserts,
+        removed,
+        retained: previous.tasks.map((task) => task.id),
+      }),
+    });
+    const saved = applyChanges({ ...previous, tasks: [] }, result);
     snapshots.set(key, structuredClone(saved));
+    saved.tasks = result.cards.flatMap((card) => {
+      const old = oldCards.get(card.id);
+      const edit = upserts.find((edit) => edit.id === card.id);
+      return applyChanges(
+        { ...previous, tasks: edit?.value || !old ? [] : [old] },
+        { version: result.version, changes: card.changes },
+      ).tasks;
+    });
     return saved;
   },
   async listWorkspaces(): Promise<Workspace[]> {

@@ -9,7 +9,7 @@ const workspaceWrites = [];
 page.on('request', (request) => {
   if (
     ['PUT', 'PATCH'].includes(request.method()) &&
-    /\/api\/workspaces\/[^/]+$/.test(new URL(request.url()).pathname)
+    /\/api\/workspaces\/[^/]+(?:\/changes)?$/.test(new URL(request.url()).pathname)
   )
     workspaceWrites.push(request.method());
 });
@@ -254,8 +254,13 @@ try {
     await page.locator('.main-content').evaluate((element) => element.clientWidth > 1700),
     'Dashboards must use all available width',
   );
-  const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export PDF', exact: true }).click();
+  const exportJob = page.locator('.export-job').first();
+  await expect(exportJob.getByText('Ready to download', { exact: true })).toBeVisible({
+    timeout: 60000,
+  });
+  const download = page.waitForEvent('download');
+  await exportJob.getByRole('link', { name: 'Download', exact: true }).click();
   assert.match((await download).suggestedFilename(), /\.pdf$/);
   await page.getByLabel('Interface language').selectOption('pt-PT');
   await page.getByRole('button', { name: 'Ajuda', exact: true }).click();

@@ -13,7 +13,7 @@ public sealed class CardService(WorkspaceStore workspaces)
         if (string.IsNullOrWhiteSpace(input.Title))
             throw new ApiError(400, "A card title is required.");
 
-        var snapshot = await workspaces.Read(workspaceId, userId);
+        var snapshot = await workspaces.Read(workspaceId, userId, cardIds: [], sharedNotificationsOnly: true);
         var state = snapshot.State;
         var id = "KB-" + Guid.NewGuid().ToString("N").ToUpperInvariant();
         var card = JsonSerializer.SerializeToNode(input, JsonSerializerOptions.Web)!.AsObject();
@@ -27,7 +27,7 @@ public sealed class CardService(WorkspaceStore workspaces)
         WorkspaceJson.Items(state, "tasks").Add(card);
 
         // A competing workspace edit returns 409 instead of overwriting its changes.
-        var saved = await workspaces.Save(workspaceId, userId, state, snapshot.Version);
+        var saved = await workspaces.Save(workspaceId, userId, state, snapshot.Version, [], sharedNotificationsOnly: true);
         var result = WorkspaceJson.Items(saved, "tasks").First(task => WorkspaceJson.Text(task, "id") == id)!;
         return new CreatedCard(result.DeepClone().AsObject(), saved["version"]!.GetValue<long>());
     }

@@ -48,6 +48,11 @@ try {
     });
     if (!seed.ok) throw new Error(await seed.text());
     state = await repository.load();
+    if (state.tasks.length) throw new Error('Workspace bootstrap downloaded cards');
+    const card = await fetch('/api/workspaces/studio/cards/KB-PAYLOAD-50').then((response) =>
+      response.json(),
+    );
+    state.tasks = [card];
     const fullBytes = new TextEncoder().encode(JSON.stringify(state)).length;
     const originalFetch = window.fetch;
     const requests = [];
@@ -65,7 +70,7 @@ try {
     };
     try {
       const next = structuredClone(state);
-      next.tasks[50].title = 'A tiny edit';
+      next.tasks[0].title = 'A tiny edit';
       next.notifications.unshift({
         id: crypto.randomUUID(),
         at: new Date().toISOString(),
@@ -74,13 +79,13 @@ try {
       next.activity.unshift('A tiny edit · Backlog');
       const saved = await repository.save(next, state);
       if (
-        saved.tasks[50].title !== 'A tiny edit' ||
-        saved.tasks[50].history.length !== 2 ||
+        saved.tasks[0].title !== 'A tiny edit' ||
+        saved.tasks[0].history.length !== 2 ||
         saved.workspace.banner !== state.workspace.banner
       )
         throw new Error('Canonical delta reconstruction failed');
       const cached = await repository.load();
-      if (JSON.stringify(cached) !== JSON.stringify(saved))
+      if (JSON.stringify(cached) !== JSON.stringify({ ...saved, tasks: [] }))
         throw new Error('Cached refresh changed state');
       // Exercise array insertion, removal, reordering and checklist fields in the shared diff algorithm.
       for (const [a, b] of [

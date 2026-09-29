@@ -405,11 +405,11 @@ export const helpArticles: HelpArticle[] = [
     category: 'Dashboards & exports',
     en: [
       'How do I export a dashboard as PDF?',
-      'Open a project dashboard, My tasks dashboard, or Overview and choose Export PDF. The report includes the current scope and filters, KPIs, charts, workflow counts, workload, bucket/swimlane performance, checklists, and recent card activity. It downloads in the selected language with a date and page numbers.',
+      'Open a project dashboard, My tasks dashboard, or Overview and choose Export PDF. The server queues the report and opens Exports, where you can follow progress and download it when ready. Reports are private to you and available for 7 days after completion. They include the selected scope and filters, KPIs, charts, workflow counts, workload, bucket/swimlane performance, checklists, and recent activity in the selected language. You can leave the page while the worker generates the report. Browser-only demo mode still downloads locally.',
     ],
     pt: [
       'Como exporto um painel para PDF?',
-      'Abra o painel de um projeto, de As minhas tarefas ou a Visão geral e escolha Exportar PDF. O relatório inclui o âmbito e filtros atuais, indicadores, gráficos, contagens por estado, carga de trabalho, desempenho de grupos/faixas, listas de verificação e atividade recente. É transferido no idioma selecionado, com data e números de página.',
+      'Abra o painel de um projeto, de As minhas tarefas ou a Visão geral e escolha Exportar PDF. O servidor coloca o relatório em fila e abre Exportações, onde pode acompanhar o progresso e transferi-lo quando estiver pronto. Os relatórios são privados e ficam disponíveis durante 7 dias após a conclusão. Incluem o âmbito e filtros selecionados, indicadores, gráficos, contagens por estado, carga de trabalho, desempenho de grupos/faixas, listas de verificação e atividade recente no idioma selecionado. Pode sair da página durante a geração. O modo de demonstração no navegador continua a transferir localmente.',
     ],
   },
   {
@@ -417,11 +417,11 @@ export const helpArticles: HelpArticle[] = [
     category: 'Dashboards & exports',
     en: [
       'How do I export project data?',
-      'Open a project, select the three-dot Project options menu, and choose Export project. A JSON file downloads with the project and its cards. Attachments are represented by metadata; their file contents are not included in the JSON export.',
+      'Open a project, select the three-dot Project options menu, and choose Export project. Follow the background job in Exports and download the JSON when ready. It includes the entire project and its cards, including cards you have not loaded. Attachments contain metadata, not file contents. Exports also offers Export workspace for a complete workspace JSON snapshot. Files are private to the requester and expire 7 days after completion; request a new export after expiry or failure.',
     ],
     pt: [
       'Como exporto os dados de um projeto?',
-      'Abra um projeto, selecione o menu de três pontos Opções do projeto e escolha Exportar projeto. É transferido um ficheiro JSON com o projeto e os cartões. Os anexos aparecem como metadados; o conteúdo dos ficheiros não é incluído na exportação JSON.',
+      'Abra um projeto, selecione o menu de três pontos Opções do projeto e escolha Exportar projeto. Acompanhe o processamento em segundo plano em Exportações e transfira o JSON quando estiver pronto. Inclui todo o projeto e os cartões, mesmo os que ainda não carregou. Os anexos contêm metadados, não o conteúdo dos ficheiros. Exportações também permite Exportar espaço de trabalho para obter um instantâneo JSON completo. Os ficheiros são privados e expiram 7 dias após a conclusão; solicite uma nova exportação se expirarem ou falharem.',
     ],
   },
   {

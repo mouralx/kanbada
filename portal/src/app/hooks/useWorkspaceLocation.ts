@@ -2,6 +2,8 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import type { State, Task } from '../../domain/models';
 import { accountStoragePrefix } from '../../infrastructure/accountStorage';
 import { repository } from '../../infrastructure/workspaceRepository';
+import { apiEnabled } from '../../infrastructure/apiClient';
+import { getCard } from '../../infrastructure/cards';
 
 type Options = {
   setProjectId: Dispatch<SetStateAction<string>>;
@@ -25,9 +27,14 @@ export function useWorkspaceLocation({ setProjectId, setPage, setDraft, setToast
         if (workspace && workspace !== loaded.workspace.id)
           loaded = await repository.switchWorkspace(workspace);
         if (!mounted || request !== sequence) return;
-        setData(loaded);
         const id = params.get('card');
-        const task = loaded.tasks.find((task) => task.id.toUpperCase() === id?.toUpperCase());
+        const task =
+          id && apiEnabled
+            ? await getCard(loaded.workspace.id, id)
+            : loaded.tasks.find((task) => task.id.toUpperCase() === id?.toUpperCase());
+        if (!mounted || request !== sequence) return;
+        if (task && apiEnabled) loaded = { ...loaded, tasks: [task] };
+        setData(loaded);
         if (task) {
           setProjectId(task.project);
           setPage('Projects');

@@ -42,6 +42,8 @@ public static class ServiceRegistration
         builder.Services.AddScoped<DatabaseMigrator>();
         builder.Services.AddScoped<WorkspaceStore>();
         builder.Services.AddScoped<CardService>();
+        builder.Services.AddScoped<CardQueries>();
+        builder.Services.AddScoped<ExportJobs>();
         builder.Services.AddScoped<Auth>();
         builder.Services.AddScoped<TwoFactor>();
         builder.Services.AddScoped<AccountAvatar>();

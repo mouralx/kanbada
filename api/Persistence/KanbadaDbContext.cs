@@ -28,9 +28,27 @@ public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options)
     public DbSet<HistoryChangeEntity> HistoryChanges => Set<HistoryChangeEntity>();
     public DbSet<ActivityEntity> Activities => Set<ActivityEntity>();
     public DbSet<NotificationEntity> Notifications => Set<NotificationEntity>();
+    public DbSet<ExportJobEntity> Exports => Set<ExportJobEntity>();
+    public DbSet<ExportChunkEntity> ExportChunks => Set<ExportChunkEntity>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<ExportJobEntity>(e =>
+        {
+            e.ToTable("exports");
+            e.HasKey(x => x.Id);
+            e.HasOne<WorkspaceEntity>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<UserEntity>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.WorkspaceId, x.UserId, x.CreatedAt, x.Id });
+            e.HasIndex(x => new { x.Status, x.CreatedAt });
+            e.HasIndex(x => x.ExpiresAt);
+        });
+        model.Entity<ExportChunkEntity>(e =>
+        {
+            e.ToTable("export_chunks");
+            e.HasKey(x => new { x.ExportId, x.Position });
+            e.HasOne<ExportJobEntity>().WithMany().HasForeignKey(x => x.ExportId).OnDelete(DeleteBehavior.Cascade);
+        });
         model.Entity<JiraApprovedHostEntity>(e =>
         {
             e.ToTable("jira_approved_hosts");
@@ -172,6 +190,9 @@ public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options)
             e.HasOne<BucketEntity>().WithMany().HasForeignKey(x => new { x.WorkspaceId, x.BucketId }).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<SwimlaneEntity>().WithMany().HasForeignKey(x => new { x.WorkspaceId, x.ProjectId, x.SwimlaneId }).HasPrincipalKey(x => new { x.WorkspaceId, x.ProjectId, x.Id }).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.WorkspaceId, x.Due });
+            e.HasIndex(x => new { x.WorkspaceId, x.Position, x.Id });
+            e.HasIndex(x => new { x.WorkspaceId, x.ProjectId, x.StatusId, x.Position, x.Id });
+            e.HasIndex(x => new { x.WorkspaceId, x.ProjectId, x.BucketId, x.Position, x.Id });
             e.ToTable(t =>
             {
                 t.HasCheckConstraint("cards_uppercase_id", "id ~ '^KB-[A-Z0-9-]+$'");

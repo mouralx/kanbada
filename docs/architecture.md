@@ -23,13 +23,13 @@ Views receive state and typed callbacks; the workspace shell coordinates changes
 ## Backend boundaries
 
 The API is a deployable assembly with feature folders. The separate
-`worker/Kanbada.Worker.csproj` process references it to share persistence and Jira
+`worker/Kanbada.Worker.csproj` process references it to share persistence, export and Jira
 synchronization logic without running HTTP endpoints. The public namespace remains `Kanbada.Api`.
 
 - `Program.cs`: configuration entry point, middleware order, route composition, startup migration.
 - `Configuration/`: dependency injection and validated options.
 - `Documentation/`: Scalar integration, generated OpenAPI metadata, and fictional example payloads.
-- `Cards/`: typed card-creation command, service, and endpoint.
+- `Cards/`: typed card-creation command, filtered cursor reads and SQL aggregate queries.
 - `Security/` and `Errors/`: request-origin enforcement and centralized Problem Details.
 - `Authentication/`: provider endpoints, password/session service, cookie validation.
 - `Workspaces/`: workspace endpoints, transaction store, input validation, transport mapping, history generation, and EF metrics queries.
@@ -37,6 +37,8 @@ synchronization logic without running HTTP endpoints. The public namespace remai
 - `Contracts/`: request records, initial workspace factory, JSON contract accessors.
 - `Files/`, `Sharing/`, `Invitations/`: feature-specific transport and permission handling.
 - `Health/`: PostgreSQL readiness check.
+- `Exports/`: private durable export jobs, paged history, streaming downloads,
+  snapshot-consistent JSON generation and aggregate-based server PDF rendering.
 - `Jira/`: owner-authorized project settings, token protection, cron scheduling,
   Jira REST adapters and per-item synchronization. The worker polls PostgreSQL
   schedules and claims connections using session advisory locks.
@@ -50,17 +52,34 @@ File, invitation, and sharing modules use EF queries and permission checks. If t
 
 1. A view edits a draft copied from the current workspace.
 2. The shell invokes the save hook, which prevents simultaneous local writes and adds any notification.
-3. The remote repository compares the draft with the exact loaded version, omits server-controlled history/identity fields, and sends only add/remove/replace changes using PATCH and `If-Match`.
+3. The remote repository compares the draft with the exact loaded version, omits server-controlled history/identity fields, and sends metadata changes plus ID-keyed card deltas using `/changes` and `If-Match`. Unloaded cards are never interpreted as deletions.
 4. The API opens a transaction, checks membership and the EF concurrency token, validates references and protected resources, regenerates history, reconciles membership and file references, then increments the version in one transaction.
 5. The returned canonical delta updates a cloned frontend snapshot, including server-generated history and version. Failure leaves the existing state and draft available; a stale save is rejected instead of merged blindly.
 
 ## Deliberate tradeoffs
 
-Workspace business data is normalized into related PostgreSQL tables managed by EF Core. The portal uses compact atomic PATCH requests and delta responses; PUT snapshots remain for compatibility. Concurrent edits share one workspace version and initial loads and changed refreshes still assemble the complete workspace; unchanged conditional GETs return 304 without loading collections; EF change tracking writes only changed rows. There is no server-side paging.
+Workspace business data is normalized into related PostgreSQL tables managed by EF Core. Portal bootstrap and refresh load metadata only. Cards and private notifications use version-bound keyset pagination; board columns load near their scroll boundary, while lists, calendar months and dashboard drilldowns offer load-more controls. SQL aggregates keep counts accurate without loading all cards. Direct links, sharing and attachment uploads do not load the entire card collection.
 
-The portal polls for changes every 15 seconds while no card or modal is being edited; it does not use WebSockets. Dashboard PDF rendering, theme, language, sidebar collapse, and filter preferences belong to the browser. PostgreSQL stores business data and access control.
+Ordinary card saves load and reconcile only the affected cards and associations, preserving their stored positions. Structural changes (project deletion, definition/member changes) still use the full server-side transaction to reconcile references and enforce existing policies; high-fanout structural writes remain more expensive than browsing or single-card edits. Metadata definitions/projects/members/activity remain eagerly loaded. Compatibility snapshot GET/PATCH/PUT remain available; the old synchronous workspace-export route returns 410 and points clients to the export queue.
 
-Before very large workspaces or high-volume multi-user editing, measure snapshot sizes and contention, then introduce additional granular commands, paging, and a push channel through the existing repository boundary.
+The portal polls for changes every 15 seconds while no card or modal is being edited; it does not use WebSockets. Theme, language, sidebar collapse, and filter preferences belong to the browser. PostgreSQL stores business data and access control. The Exports area polls active jobs every three seconds and offers direct attachment links.
+
+Export requests only create PostgreSQL jobs. An independent hosted service in the
+worker processes them separately from Jira, using per-job advisory locks to
+prevent duplicate execution across replicas. Interrupted jobs restart after the
+connection releases its lock; three interrupted attempts produce an explicit failure.
+Generation holds a repeatable-read snapshot starting at processing time.
+JSON streams 100-card pages to a private temporary file and clears EF tracking
+between pages; workspace notifications stream separately. PDFsharp renders the
+dashboard from metadata and complete SQL aggregates, not all card objects.
+Progress updates use another connection so they remain visible during generation.
+Completed files are stored in PostgreSQL chunks of at most 1 MiB, with completion
+published only after all chunks are stored and membership is rechecked.
+No shared API/worker filesystem is required. Temporary files are disposed after use.
+Downloads stream under a repeatable-read transaction so concurrent cleanup cannot
+truncate them. File bytes expire after seven days; small job history records remain.
+Browser-only demo mode explicitly retains local exports because it has no server
+workspace or worker. High-fanout structural commands remain a separate scaling concern.
 
 ## Reference guidance
 

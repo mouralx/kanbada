@@ -29,6 +29,8 @@ import { isActivitiesProject } from '../domain/projectRules';
 import { BoardToolbar } from '../features/board/BoardToolbar';
 import { CalendarView } from '../features/board/CalendarView';
 import { TaskList } from '../features/board/TaskList';
+import { Exports } from '../features/exports/Exports';
+import { PagedCards, useCardSummary } from '../features/board/PagedCards';
 import { BoardCard } from '../features/cards/BoardCard';
 import { CardDrawer } from '../features/cards/CardDrawer';
 import { Dashboard } from '../features/dashboard/Dashboard';
@@ -36,6 +38,7 @@ import { HelpCenter } from '../features/help/HelpCenter';
 import { ProjectDirectory } from '../features/projects/ProjectDirectory';
 import { currentStorageAccount } from '../infrastructure/accountStorage';
 import { apiEnabled } from '../infrastructure/apiClient';
+import { getCard, queryString, sumGroups, type CardQuery } from '../infrastructure/cards';
 import { fileRepository } from '../infrastructure/attachments';
 import { repository } from '../infrastructure/workspaceRepository';
 import { useI18n, type Locale } from '../shared/i18n';
@@ -52,6 +55,11 @@ export function App() {
   const [page, setPage] = useState('Projects');
   const [view, setView] = useState('Board');
   const [search, setSearch] = useState('');
+  const [remoteSearch, setRemoteSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setRemoteSearch(search), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
   const [priority, setPriority] = useState('All');
   const [person, setPerson] = useState('All');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -86,6 +94,40 @@ export function App() {
     setToast,
   });
   const { saving, commit } = useWorkspaceSave(data, setData, setToast);
+  const selectedProject =
+    data?.projects.find((p) => p.id === projectId) ??
+    data?.projects.find((p) => !p.archived) ??
+    data?.projects[0];
+  const currentDate = new Date();
+  const today = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+  const scopeQuery: CardQuery =
+    page === 'My tasks' ? { mine: true, today } : { project: selectedProject?.id, today };
+  const cardQuery: CardQuery = {
+    ...scopeQuery,
+    search: remoteSearch || undefined,
+    priority: priority === 'All' ? undefined : priority,
+    person: person === 'All' ? undefined : person,
+    bucket: bucketFilter === 'All' ? undefined : bucketFilter,
+    status: statusFilter === 'All' ? undefined : statusFilter,
+    swimlane: swimlaneFilter === 'All' ? undefined : swimlaneFilter,
+    completion: completionFilter === 'All' ? undefined : completionFilter,
+  };
+  const workspaceSummary = useCardSummary(data?.workspace.id, data?.version, { today });
+  const scopeSummary = useCardSummary(
+    page === 'My tasks' || page === 'Projects' ? data?.workspace.id : undefined,
+    data?.version,
+    scopeQuery,
+  );
+  const filteredSummary = useCardSummary(
+    page === 'My tasks' || page === 'Projects' ? data?.workspace.id : undefined,
+    data?.version,
+    cardQuery,
+  );
+  const openTask = (task: Task | null) => {
+    if (task && apiEnabled)
+      setData((current) => (current ? { ...current, tasks: [task] } : current));
+    setDraft(task ? structuredClone(task) : null);
+  };
   const closeDraft = useCallback(() => {
     if (uploading) return;
     for (const file of draft?.attachments ?? [])
@@ -110,7 +152,10 @@ export function App() {
           )
             setData(next);
         })
-        .catch(() => {});
+        .catch((error: unknown) => {
+          if (!cancelled)
+            setToast(error instanceof Error ? error.message : 'Could not load workspace.');
+        });
     }, 15000);
     return () => {
       cancelled = true;
@@ -404,8 +449,6 @@ export function App() {
   const projectTasks = (page === 'My tasks' ? activeTasks : data.tasks).filter((t) =>
     page === 'My tasks' ? t.assignees.includes(currentMember.name) : t.project === project.id,
   );
-  const currentDate = new Date();
-  const today = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
   const selectedLane = data.swimlanes.find((lane) => lane.id === swimlaneFilter);
   const filtered = projectTasks.filter(
     (t) =>
@@ -427,8 +470,11 @@ export function App() {
             ? !isDone(t)
             : !isDone(t) && !!t.due && t.due < today)),
   );
-  const completed = projectTasks.filter((t) => isDone(t)).length;
-  const progress = projectTasks.length ? Math.round((completed / projectTasks.length) * 100) : 0;
+  const projectTotal = apiEnabled ? (scopeSummary.summary?.counts.total ?? 0) : projectTasks.length;
+  const completed = apiEnabled
+    ? (scopeSummary.summary?.counts.completed ?? 0)
+    : projectTasks.filter((t) => isDone(t)).length;
+  const progress = projectTotal ? Math.round((completed / projectTotal) * 100) : 0;
   const avatar = (name: string, small = false) => {
     const m = data.members.find((m) => m.name === name);
     return (
@@ -464,8 +510,16 @@ export function App() {
     setMenu(false);
     if (name === 'My tasks') setView('List');
   };
-  const move = (id: string, value: string, lane: (typeof lanes)[number]) => {
-    const task = data.tasks.find((t) => t.id === id);
+  const move = async (id: string, value: string, lane: (typeof lanes)[number]) => {
+    let task: Task | undefined;
+    try {
+      task = apiEnabled
+        ? await getCard(data.workspace.id, id)
+        : data.tasks.find((t) => t.id === id);
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : 'Could not load cards.');
+      return;
+    }
     if (!task) return;
     if (task.readOnly) {
       setToast('This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.');
@@ -488,7 +542,7 @@ export function App() {
       void commit(
         {
           ...data,
-          tasks: data.tasks.map((t) => (t.id === id ? updated : t)),
+          tasks: [...data.tasks.filter((t) => t.id !== id), updated],
           activity: [
             `Moved “${task.title}” to ${groupName(value)}${lane.name ? ' / ' + lane.name : ''}`,
             ...data.activity,
@@ -503,7 +557,7 @@ export function App() {
       key={task.id}
       task={task}
       isDone={isDone}
-      setDraft={setDraft}
+      setDraft={openTask}
       t={t}
       data={data}
       locale={locale}
@@ -534,6 +588,7 @@ export function App() {
         project={project}
         setProjectId={setProjectId}
         avatar={avatar}
+        summary={workspaceSummary.summary}
       />
       <main>
         <header className="topbar">
@@ -582,7 +637,9 @@ export function App() {
               onClick={() => setModal('Notifications')}
             >
               <Bell size={19} />
-              {data.notifications.length > 0 && <i className="unread-indicator" />}
+              {(data.notificationCount ?? data.notifications.length) > 0 && (
+                <i className="unread-indicator" />
+              )}
             </button>
             <button
               className="avatar-button"
@@ -594,6 +651,20 @@ export function App() {
           </div>
         </header>
         <div className="main-content">
+          {[workspaceSummary, scopeSummary, filteredSummary].find((result) => result.error) && (
+            <div role="alert">
+              {t('Could not load card totals.')}
+              <button
+                onClick={() => {
+                  workspaceSummary.retry();
+                  scopeSummary.retry();
+                  filteredSummary.retry();
+                }}
+              >
+                {t('Retry')}
+              </button>
+            </div>
+          )}
           <div className="project-heading">
             <div>
               <div className="eyebrow">
@@ -611,9 +682,11 @@ export function App() {
                       ? t('A good day to make progress.')
                       : page === 'Members'
                         ? t('Your workspace members.')
-                        : page === 'Help'
-                          ? t('Help')
-                          : t('My tasks')}
+                        : page === 'Exports'
+                          ? t('Exports')
+                          : page === 'Help'
+                            ? t('Help')
+                            : t('My tasks')}
                 <span className="title-dot">.</span>
               </h1>
               <p>
@@ -709,13 +782,14 @@ export function App() {
                     <p>
                       <b>{completed}</b>
                       {' ' + t('of') + ' '}
-                      {projectTasks.length}
+                      {projectTotal}
                       {' ' + t('tasks completed')}
                     </p>
                   </div>
                 </section>
               )}
               <BoardToolbar
+                onExports={() => setPage('Exports')}
                 view={view}
                 setView={setView}
                 t={t}
@@ -747,6 +821,7 @@ export function App() {
                 setToast={setToast}
                 setModal={setModal}
                 toggleArchive={toggleArchive}
+                summary={scopeSummary.summary}
               />
               {page === 'Projects' && (
                 <div className="workflow-toolbar">
@@ -787,7 +862,7 @@ export function App() {
                   {saving ? t('Saving changes\u2026') : t('Everything\u2019s up to date')}
                 </span>
                 <span>
-                  {filtered.length}
+                  {apiEnabled ? (filteredSummary.summary?.counts.total ?? '…') : filtered.length}
                   {' ' + t('tasks') + ' '}
                   <span className="caption-dot">·</span>
                   {' ' + t('September 2026')}
@@ -795,12 +870,14 @@ export function App() {
               </div>
               {view === 'Dashboard' ? (
                 <Dashboard
+                  onExports={() => setPage('Exports')}
                   key={page + project.id}
                   data={data}
                   tasks={projectTasks}
                   projectId={page === 'Projects' ? project.id : undefined}
                   title={page === 'My tasks' ? t('My tasks dashboard') : t('Project dashboard')}
-                  onOpen={(task) => setDraft(structuredClone(task))}
+                  onOpen={openTask}
+                  mine={page === 'My tasks'}
                 />
               ) : view === 'Board' ? (
                 <div className="swimlanes">
@@ -830,7 +907,12 @@ export function App() {
                         <span className="lane-color" style={{ background: lane.color }} />
                         <strong>{lane.name || 'No swimlane'}</strong>
                         <span className="lane-count">
-                          {filtered.filter((t) => inLane(t, lane)).length}
+                          {apiEnabled
+                            ? sumGroups(
+                                filteredSummary.summary,
+                                (g) => (g.swimlane ?? '') === lane.id,
+                              ).total
+                            : filtered.filter((t) => inLane(t, lane)).length}
                         </span>
                         {page === 'My tasks' && lane.project && (
                           <small>{data.projects.find((p) => p.id === lane.project)?.name}</small>
@@ -860,7 +942,7 @@ export function App() {
                               onDrop={(e) => {
                                 e.preventDefault();
                                 e.currentTarget.classList.remove('drag-over');
-                                move(e.dataTransfer.getData('text/plain'), status, lane);
+                                void move(e.dataTransfer.getData('text/plain'), status, lane);
                               }}
                             >
                               <div className="column-heading">
@@ -884,10 +966,20 @@ export function App() {
                                 </span>
                                 <h2>{t(groupName(status))}</h2>
                                 <span className="column-count">
-                                  {
-                                    filtered.filter((t) => inGroup(t, status) && inLane(t, lane))
-                                      .length
-                                  }
+                                  {apiEnabled
+                                    ? sumGroups(
+                                        filteredSummary.summary,
+                                        (g) =>
+                                          (g.swimlane ?? '') === lane.id &&
+                                          (groupBy === 'Status'
+                                            ? g.status ===
+                                              data.statuses.find((s) => s.name === status)?.id
+                                            : (g.bucket ?? '') ===
+                                              (data.buckets.find((b) => b.name === status)?.id ??
+                                                '')),
+                                      ).total
+                                    : filtered.filter((t) => inGroup(t, status) && inLane(t, lane))
+                                        .length}
                                 </span>
                                 <button
                                   aria-label={t('Add task to {0}', status)}
@@ -904,9 +996,37 @@ export function App() {
                                 </button>
                               </div>
                               <div className="column-cards">
-                                {filtered
-                                  .filter((t) => inGroup(t, status) && inLane(t, lane))
-                                  .map(card)}
+                                {apiEnabled
+                                  ? (swimlaneFilter === 'All' || swimlaneFilter === lane.id) &&
+                                    (groupBy === 'Status'
+                                      ? statusFilter === 'All' || statusFilter === status
+                                      : bucketFilter === 'All' || bucketFilter === status) && (
+                                      <PagedCards
+                                        key={
+                                          data.workspace.id +
+                                          ':' +
+                                          data.version +
+                                          ':' +
+                                          queryString(cardQuery) +
+                                          ':' +
+                                          groupBy
+                                        }
+                                        workspace={data.workspace.id}
+                                        query={{
+                                          ...cardQuery,
+                                          swimlane: lane.id,
+                                          ...(groupBy === 'Status'
+                                            ? { status }
+                                            : { bucket: status }),
+                                        }}
+                                        infinite
+                                      >
+                                        {(items) => items.map(card)}
+                                      </PagedCards>
+                                    )
+                                  : filtered
+                                      .filter((t) => inGroup(t, status) && inLane(t, lane))
+                                      .map(card)}
                               </div>
                               <button
                                 className="add-card"
@@ -930,14 +1050,67 @@ export function App() {
                   ))}
                 </div>
               ) : view === 'List' ? (
-                <TaskList
-                  key={page}
-                  personal={page === 'My tasks'}
-                  tasks={filtered}
-                  data={data}
-                  onOpen={(task) => setDraft(structuredClone(task))}
-                  avatar={avatar}
-                />
+                apiEnabled ? (
+                  <PagedCards
+                    key={data.workspace.id + ':' + data.version + ':' + queryString(cardQuery)}
+                    workspace={data.workspace.id}
+                    query={cardQuery}
+                  >
+                    {(items) => (
+                      <TaskList
+                        personal={page === 'My tasks'}
+                        tasks={items}
+                        data={data}
+                        onOpen={openTask}
+                        avatar={avatar}
+                        summary={filteredSummary.summary}
+                      />
+                    )}
+                  </PagedCards>
+                ) : (
+                  <TaskList
+                    key={page}
+                    personal={page === 'My tasks'}
+                    tasks={filtered}
+                    data={data}
+                    onOpen={openTask}
+                    avatar={avatar}
+                  />
+                )
+              ) : apiEnabled ? (
+                <PagedCards
+                  key={
+                    data.workspace.id +
+                    ':' +
+                    data.version +
+                    ':' +
+                    queryString(cardQuery) +
+                    ':' +
+                    year +
+                    ':' +
+                    month
+                  }
+                  workspace={data.workspace.id}
+                  query={{
+                    ...cardQuery,
+                    from: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+                    to: `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`,
+                  }}
+                >
+                  {(items) => (
+                    <CalendarView
+                      year={year}
+                      month={month}
+                      locale={locale}
+                      t={t}
+                      setMonth={setMonth}
+                      setYear={setYear}
+                      filtered={items}
+                      setDraft={openTask}
+                      data={data}
+                    />
+                  )}
+                </PagedCards>
               ) : (
                 <CalendarView
                   year={year}
@@ -947,13 +1120,16 @@ export function App() {
                   setMonth={setMonth}
                   setYear={setYear}
                   filtered={filtered}
-                  setDraft={setDraft}
+                  setDraft={openTask}
                   data={data}
                 />
               )}
             </>
           )}
           {page === 'Help' && <HelpCenter />}
+          {page === 'Exports' && apiEnabled && (
+            <Exports key={data.workspace.id} workspace={data.workspace.id} />
+          )}
           {page === 'Overview' && (
             <>
               {data.workspace.banner && (
@@ -969,10 +1145,11 @@ export function App() {
                 </div>
               )}
               <Dashboard
+                onExports={() => setPage('Exports')}
                 data={data}
                 tasks={activeTasks}
                 title={t('Workspace dashboard')}
-                onOpen={(task) => setDraft(structuredClone(task))}
+                onOpen={openTask}
               />
               <div className="project-section-heading">
                 <h2 className="section-title">
@@ -1002,7 +1179,9 @@ export function App() {
                   .filter((p) => !!p.archived === showArchived)
                   .map((p) => {
                     const ts = data.tasks.filter((t) => t.project === p.id);
-                    const n = ts.filter((t) => isDone(t)).length;
+                    const counts = sumGroups(workspaceSummary.summary, (g) => g.project === p.id);
+                    const total = apiEnabled ? counts.total : ts.length;
+                    const n = apiEnabled ? counts.completed : ts.filter((t) => isDone(t)).length;
                     return (
                       <button
                         key={p.id}
@@ -1018,12 +1197,12 @@ export function App() {
                         <h3>{isActivitiesProject(p) ? t('My activities') : p.name}</h3>
                         <p>{p.description}</p>
                         <div className="progress-track">
-                          <i style={{ width: `${ts.length ? (n / ts.length) * 100 : 0}%` }} />
+                          <i style={{ width: `${total ? (n / total) * 100 : 0}%` }} />
                         </div>
                         <small>
                           {n}
                           {' ' + t('of') + ' '}
-                          {ts.length}
+                          {total}
                           {' ' + t('tasks completed')}
                           {p.archived ? t(' \u00B7 Archived') : ''}
                         </small>
@@ -1043,6 +1222,7 @@ export function App() {
               projects={data.projects}
               tasks={data.tasks}
               statuses={data.statuses}
+              summary={workspaceSummary.summary}
               archived={showArchived}
               setArchived={setShowArchived}
               search={search}
@@ -1095,10 +1275,11 @@ export function App() {
                       )}
                       <div>
                         <span>
-                          {
-                            data.tasks.filter((t) => t.assignees.includes(m.name) && !isDone(t))
-                              .length
-                          }
+                          {apiEnabled
+                            ? (workspaceSummary.summary?.workload.find((w) => w.email === m.email)
+                                ?.total ?? 0)
+                            : data.tasks.filter((t) => t.assignees.includes(m.name) && !isDone(t))
+                                .length}
                           {' ' + t('active tasks')}
                         </span>
                         {i > 0 && data.workspace.canManage !== false && (
@@ -1186,6 +1367,8 @@ export function App() {
         saveDefinitions={saveDefinitions}
         setProjectId={setProjectId}
         navigate={navigate}
+        summary={workspaceSummary.summary}
+        onRefresh={async () => setData(await repository.load())}
       />
       {toast && (
         <div role="status" className="toast">

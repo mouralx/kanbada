@@ -58,6 +58,41 @@ Keep PostgreSQL private. The local Compose port is bound to 127.0.0.1. Use TLS a
 
 Configure reverse-proxy body limits consistently with the API's 32 MiB request limit and 25 MiB per-file upload limit. IP rate limiting is process-local and targets authentication; second-factor verification also has a database-backed account lockout shared across replicas; use gateway limits/distributed policy if replicas or abuse volume require it. Review capacity for workspace snapshot response sizes and in-database file storage before scaling.
 
+## Asynchronous exports
+
+Apply the `CardPaginationIndexes` and `AsyncExports` migrations before starting the
+updated production API and worker. Rebuild/redeploy **both** images. The existing
+worker now runs independent Jira and export hosted services; without it, export
+requests remain visibly queued. It polls jobs every three seconds, reclaims
+interrupted jobs using PostgreSQL advisory locks, and removes expired file chunks.
+Do not run export generation inside the API process.
+
+The worker requires a writable temporary directory with enough space for the
+largest active export, plus PostgreSQL capacity for retained files and WAL.
+One worker processes one export at a time; multiple replicas can process distinct
+jobs without sharing a disk. Each JSON batch holds at most 100 cards and each
+stored file chunk at most 1 MiB. PDF output is assembled on the worker from
+aggregates. Long exports hold a repeatable-read snapshot: monitor PostgreSQL
+vacuum/WAL pressure and temporary-disk usage. Hard crashes may leave temporary
+files; clean stale `kanbada-export-*.tmp` files only when no worker is using them.
+
+Results are private to the requester and expire seven days after completion.
+The API rejects expired downloads immediately, even if cleanup has not run.
+Small expired/failed history entries remain for tracking. Removing workspace
+membership blocks future status reads/downloads; deleting the workspace/account
+cascades its export storage. An authorized download already in progress may finish.
+Include export tables in database storage/backup planning; backup retention may
+outlive the seven-day application retention.
+
+The worker image installs DejaVu Sans for Unicode PDF text. On a host, install that
+font or set `EXPORT_PDF_FONT` to an appropriate Unicode TrueType `.ttf` file;
+macOS Arial and Windows Arial are also detected. Missing fonts fail the job with
+an explicit error in worker logs rather than producing a broken PDF. Custom
+character sets need a font with the corresponding glyph coverage.
+For host execution, supply `ConnectionStrings__Postgres` from your configuration
+service and run `dotnet run --project worker/Kanbada.Worker.csproj`; the worker
+does not automatically read the API's local JSON configuration.
+
 ## Health and logs
 
 `/api/health/ready` returns success only when the PostgreSQL health check succeeds. Use it for readiness. `/api/health` provides a small connectivity response. ASP.NET Core logs go to standard output. Unexpected exceptions include method/path context; responses include a trace ID. Retain logs without secret values and configure platform log retention.

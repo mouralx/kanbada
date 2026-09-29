@@ -11,10 +11,13 @@ import {
   SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import { type Project, type State, type Status, type Task } from '../../domain/models';
 import { isActivitiesProject } from '../../domain/projectRules';
 import { apiEnabled } from '../../infrastructure/apiClient';
+import { sumGroups, type CardSummary } from '../../infrastructure/cards';
+import { requestExport } from '../../infrastructure/exports';
+import { useI18n } from '../../shared/i18n';
 
 type BoardToolbarProps = {
   view: string;
@@ -51,6 +54,8 @@ type BoardToolbarProps = {
   setToast: React.Dispatch<React.SetStateAction<string>>;
   setModal: React.Dispatch<React.SetStateAction<string | null>>;
   toggleArchive: (archived: boolean, targetProject?: Project) => Promise<void>;
+  summary?: CardSummary | null;
+  onExports: () => void;
 };
 
 export function BoardToolbar({
@@ -85,7 +90,11 @@ export function BoardToolbar({
   setToast,
   setModal,
   toggleArchive,
+  summary,
+  onExports,
 }: BoardToolbarProps) {
+  const { locale } = useI18n();
+  const [exporting, setExporting] = useState(false);
   return (
     <div className="board-toolbar">
       <div className="view-tabs">
@@ -163,7 +172,11 @@ export function BoardToolbar({
                   <option value="">{t('No bucket')}</option>
                   {data.buckets.map((b) => (
                     <option value={b.name} key={b.id}>
-                      {b.name} ({projectTasks.filter((t) => t.bucket === b.name).length})
+                      {b.name} (
+                      {summary
+                        ? sumGroups(summary, (g) => g.bucket === b.id).total
+                        : projectTasks.filter((t) => t.bucket === b.name).length}
+                      )
                     </option>
                   ))}
                 </select>
@@ -178,13 +191,20 @@ export function BoardToolbar({
                   <option value="All">{t('All swimlanes')}</option>
                   <option value="">
                     {t('No swimlane (')}
-                    {projectTasks.filter((t) => !t.swimlane).length})
+                    {summary
+                      ? sumGroups(summary, (g) => !g.swimlane).total
+                      : projectTasks.filter((t) => !t.swimlane).length}
+                    )
                   </option>
                   {lanes
                     .filter((lane) => lane.id)
                     .map((lane) => (
                       <option value={lane.id} key={lane.id}>
-                        {lane.name} ({projectTasks.filter((t) => inLane(t, lane)).length})
+                        {lane.name} (
+                        {summary
+                          ? sumGroups(summary, (g) => g.swimlane === lane.id).total
+                          : projectTasks.filter((t) => inLane(t, lane)).length}
+                        )
                       </option>
                     ))}
                 </select>
@@ -263,23 +283,47 @@ export function BoardToolbar({
                   </button>
                 )}
                 <button
-                  onClick={() => {
-                    const blob = new Blob(
-                      [JSON.stringify({ project, tasks: projectTasks }, null, 2)],
-                      { type: 'application/json' },
-                    );
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = project.id + '.json';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    setMenu(false);
-                    setToast('Project exported');
+                  disabled={exporting}
+                  onClick={async () => {
+                    setExporting(true);
+                    try {
+                      if (apiEnabled) {
+                        await requestExport(
+                          data.workspace.id,
+                          'project-json',
+                          { project: project.id },
+                          locale,
+                        );
+                        setMenu(false);
+                        setToast('Export queued. Follow its progress in Exports.');
+                        onExports();
+                        return;
+                      }
+                      const blob = new Blob(
+                        [JSON.stringify({ project, tasks: projectTasks }, null, 2)],
+                        {
+                          type: 'application/json',
+                        },
+                      );
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = project.id + '.json';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      setMenu(false);
+                      setToast('Project exported');
+                    } catch (error) {
+                      setToast(
+                        error instanceof Error ? error.message : 'Could not export project.',
+                      );
+                    } finally {
+                      setExporting(false);
+                    }
                   }}
                 >
                   <Download size={15} />
-                  {t('Export project')}
+                  {t(exporting ? 'Preparing export…' : 'Export project')}
                 </button>
                 <button
                   onClick={() => {

@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleHelp,
   Columns3,
+  Download,
   LayoutDashboard,
   Plus,
   Settings,
@@ -17,6 +18,8 @@ import type { Member } from '../domain/models';
 import { type Project, type State, type Task } from '../domain/models';
 import { isActivitiesProject } from '../domain/projectRules';
 import { LogoutButton } from '../features/auth/AuthBoundary';
+import type { CardSummary } from '../infrastructure/cards';
+import { apiEnabled } from '../infrastructure/apiClient';
 
 type SidebarProps = {
   sidebar: boolean;
@@ -33,6 +36,7 @@ type SidebarProps = {
   project: Project;
   setProjectId: React.Dispatch<React.SetStateAction<string>>;
   avatar: (name: string, small?: boolean) => React.JSX.Element;
+  summary?: CardSummary | null;
 };
 
 export function Sidebar({
@@ -50,6 +54,7 @@ export function Sidebar({
   project,
   setProjectId,
   avatar,
+  summary,
 }: SidebarProps) {
   const [tooltip, setTooltip] = useState<{ label: string; left: number; top: number } | null>(null);
   const showTooltip = (event: React.MouseEvent<HTMLElement> | React.FocusEvent<HTMLElement>) => {
@@ -159,6 +164,7 @@ export function Sidebar({
             { name: 'My tasks', icon: CheckSquare },
             { name: 'Projects', icon: Columns3 },
             { name: 'Members', icon: Users },
+            ...(apiEnabled ? [{ name: 'Exports', icon: Download }] : []),
           ].map(({ name, icon: Icon }) => (
             <button
               aria-label={t(name)}
@@ -175,11 +181,11 @@ export function Sidebar({
               <span className="nav-text">{t(name)}</span>
               {name === 'My tasks' && (
                 <span className="nav-count">
-                  {
-                    activeTasks.filter(
-                      (t) => t.assignees.includes(currentMember.name) && !isDone(t),
-                    ).length
-                  }
+                  {summary
+                    ? summary.myOpen
+                    : activeTasks.filter(
+                        (t) => t.assignees.includes(currentMember.name) && !isDone(t),
+                      ).length}
                 </span>
               )}
             </button>

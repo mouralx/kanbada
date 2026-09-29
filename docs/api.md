@@ -55,11 +55,20 @@ Workspace reads and writes:
 
 - `GET /workspaces`: workspaces available to the current user.
 - `POST /workspaces`: `{ "name": "Workspace name" }`; returns its initial state.
-- `GET /workspaces/{id}`: complete workspace snapshot, `version`, and ETag.
+- `GET /workspaces/{id}?metadataOnly=true`: portal metadata, `version`, ETag and notification count, without cards or private notification payloads. Omit the flag for the compatibility full snapshot.
+- `GET /workspaces/{id}/cards`: filtered cursor page (`items`, `total`, `nextCursor`, `version`); 40 cards by default, maximum 100.
+- `GET /workspaces/{id}/card-summary`: complete filtered counts and grouped dashboard data, calculated in PostgreSQL.
+- `PATCH /workspaces/{id}/changes`: metadata changes and ID-keyed card edits/deletions, safe for partially loaded workspaces; requires `If-Match`.
+- `GET /workspaces/{id}/notification-feed`: 40 visible notifications per cursor page.
+- `DELETE /workspaces/{id}/notification-feed?notificationId=...`: dismiss a visible notification, or omit `notificationId` to clear all visible notifications (including unloaded pages); requires `If-Match`.
 - `PATCH /workspaces/{id}`: only changed fields/array entries plus `If-Match`; returns canonical changes and the new version.
 - `PUT /workspaces/{id}`: compatibility full-snapshot replacement; the portal does not use it.
 - `DELETE /workspaces/{id}`: owner only; personal workspaces cannot be deleted.
-- `GET /workspaces/{id}/export`: workspace JSON download.
+- `POST /workspaces/{id}/exports`: queue a private export (202).
+- `GET /workspaces/{id}/exports`: your export history, 20 jobs per cursor page.
+- `GET /workspaces/{id}/exports/{exportId}`: status, progress, errors and expiry.
+- `GET /workspaces/{id}/exports/{exportId}/download`: stream a completed file.
+- `GET /workspaces/{id}/export`: retired synchronous endpoint (410); use the export queue.
 - `GET /workspaces/{id}/{collection}`: projects, tasks, members, statuses, buckets, labels, swimlanes, notifications, or activity.
 - `POST /workspaces/{id}/cards`: create a card from a typed command; only title is required.
 - `GET /workspaces/{id}/cards/{cardId}`: one card, with case-insensitive ID lookup.
@@ -117,20 +126,64 @@ If another member saved version 5 first, your PATCH returns 409. Reload the work
 
 ## Current contract limits
 
-The flexible workspace JSON schema is partly represented as an open object in generated OpenAPI. Consult `portal/src/domain/models.ts`, `api/Contracts/Models.cs`, and `WorkspaceValidator` for its fields and rules. The integration suite exercises actual snapshots. There is no paging, event subscription, public anonymous card endpoint, password reset endpoint, or email delivery service.
+The flexible workspace JSON schema is partly represented as an open object in generated OpenAPI. Consult `portal/src/domain/models.ts`, `api/Contracts/Models.cs`, and `WorkspaceValidator` for its fields and rules. The integration suite exercises actual snapshots. There is no event subscription, public anonymous card endpoint, password reset endpoint, or email delivery service.
 
 ## Compact portal saves and conditional refreshes
 
-The portal uses `PATCH /api/workspaces/{id}` with `X-Kanbada-Request: 1` and the loaded version in `If-Match`. It sends only changed fields or inserted/removed array entries, keeping related edits atomic:
+The portal uses `PATCH /api/workspaces/{id}/changes` with `X-Kanbada-Request: 1` and the loaded version in `If-Match`. Metadata retains JSON Pointer changes. Existing cards use ID-keyed field changes against a one-card array; new cards use `{ "id": "...", "value": { ... } }`, and deletions use `removed` IDs. Omitted cards are never deleted:
 
 ```json
-{"changes":[{"op":"replace","path":"/tasks/0/title","value":"Updated title"}]}
+{"changes":[],"upserts":[{"id":"KB-A1B2C3D4","changes":[{"op":"replace","path":"/tasks/0/title","value":"Updated title"}]}],"removed":[]}
 ```
 
 The supported operations are `add`, `remove`, and `replace`, with JSON Pointer paths (`~0` for `~`, `~1` for `/`). Array positions refer to the version identified by `If-Match`; operations are applied in order. There is no `move`, `copy`, `test`, script execution, or whole-document replacement. A request is limited to 10000 operations. Existing authorization, protected-resource validation, reference validation, and history generation apply. Invalid changes roll back; missing/stale versions return 428/409.
 
-The response is `{ "version": 2, "changes": [...] }`, relative to the original loaded state. It includes changed fields and generated history, not unrelated cards, old history, or images. Apply it in order to a clone of that original state. Scalar documents this endpoint and has an executable example. The portal no longer calls the full-state PUT endpoint.
+The response is `{ "version": 2, "changes": [...], "cards": [{ "id": "...", "changes": [...] }], "removed": [...] }`. Apply metadata changes to the metadata snapshot and each card delta to its original one-card array (an empty array for a new card). Optional `retained` card IDs request canonical deltas for open/cached cards even when only metadata changed. It includes generated history, not unrelated cards, old history, or images. Structural edits reconcile references on cards not downloaded by the browser. The original indexed `PATCH /workspaces/{id}` and full-state PUT remain for compatibility; do not use them with partial snapshots.
 
-Workspace GET supports `If-None-Match: "2"`: after authorization, a matching version returns 304 and no body. The portal caches snapshots separately for each account/workspace and uses that cached snapshot only on an authenticated 304. HTTP caching is disabled with `private, no-store`; the application manages its explicit memory cache. A changed version still returns the full workspace, and initial loading remains a full snapshot.
+Workspace GET supports `If-None-Match: "2"`: after authorization, a matching version returns 304 and no body. The portal caches metadata separately for each account/workspace and uses that cached snapshot only on an authenticated 304. HTTP caching is disabled with `private, no-store`; the application manages its explicit memory cache. Initial loading and changed refreshes request `metadataOnly=true`, never the full card collection. API clients must keep metadata/full-snapshot caches separate.
+
+## Pagination and complete results
+
+Card reads and summaries accept `project` (ID), `mine=true`, `active=true`, `search`,
+`priority`, `person` (assignee name), `bucket` (name), `swimlane` (ID), `status`
+(name), `completion` (`Open`, `Completed`, `Overdue`), `from`/`to` (inclusive due
+dates), `today` (caller-local date) and `unassigned=true`. Omit a filter for all
+values; an empty bucket/swimlane selects ungrouped cards. Filters are applied
+before pagination, including searches for cards that have never been loaded.
+
+Pass `nextCursor` as URL-encoded `after` with the same filters. Pages use indexed
+`position, id` ordering, not increasingly expensive offsets. Totals refer to all
+matches, not just the page. The cursor is scoped to workspace, caller, filters
+and workspace version. Changed versions return 409 rather than silently skipping
+or duplicating cards; restart the query. Invalid cursors/page sizes return 400.
+
+The board fetches each visible column/swimlane independently and loads the next
+40 cards when its bottom approaches the viewport. Lists, calendar months,
+dashboard drilldowns and notifications expose explicit load-more controls.
+Changing filters, view, workspace or version discards old pages and cancels
+pending requests. Closing/reopening a card uses its independent detail read.
+
+Dashboard totals/charts, sidebar counts, project progress and definition usage
+come from database aggregates. Project JSON, workspace JSON and dashboard PDF
+exports run asynchronously in the separate worker, never in the browser or an
+HTTP request. Submit `{ "id": "<new UUID>", "kind": "project-json",
+"query": { "project": "my-activities" }, "locale": "en-US" }`; supported kinds
+are `project-json`, `workspace-json` and `dashboard-pdf`. A repeated UUID with the
+same parameters returns the existing job; conflicting reuse returns 409.
+Project JSON includes every card in that project, regardless of board filters.
+Workspace JSON includes all cards and only notifications visible to the requester.
+Dashboard PDF uses the same `CardQuery` filters as its dashboard, including
+the caller-local `today`, and complete SQL aggregates. Locales are `en-US` and `pt-PT`.
+
+Jobs transition from `queued` to `running`, then `completed` or `failed`.
+`processed`, `total`, `snapshotVersion`, `error` and timestamps describe progress.
+The snapshot is taken when processing starts, not when the request is queued.
+Concurrent edits do not mix versions or abort a consistent export. Only the
+requester with current workspace membership can follow or download it.
+Files expire **7 days after completion**; expiry is enforced even when the
+worker is offline. Downloads return 409 before completion, 410 after expiry,
+and 404 for inaccessible jobs. Download using an ordinary authenticated browser
+attachment link, not `fetch` followed by a Blob. History/status are private/no-store.
+An already-started download can finish while expired chunks are cleaned up.
 
 Registration avatars: `GET /auth/avatar/gravatar` returns `{ "photo": "data:..." }` or `{ "photo": null }` for the signed-in account email. `POST /auth/avatar` accepts `{ "photo": "data:image/png;base64,..." }` or `{ "useGravatar": true }` and returns 204. Both require a session, including restricted registration sessions. Images must be PNG, JPEG, GIF or WebP, up to 2 MB. Gravatar is optional; selecting it stores a snapshot. Session responses include `avatarRequired`.

@@ -21,7 +21,7 @@ podman compose up --force-recreate -d --wait --wait-timeout 600
 ```
 
 Open **[Kanbada](http://localhost:4173)**. Compose starts PostgreSQL, the API
-(with development migrations), the Jira synchronization worker, and the portal development server. Node.js
+(with development migrations), the Jira/export worker, and the portal development server. Node.js
 and a running container engine with Compose are needed on the host; .NET and
 portal dependencies are installed when building the images. The API uses a
 multi-stage build with an ASP.NET runtime image; the portal image runs Vite.
@@ -123,7 +123,7 @@ Start with the [documentation index](docs/README.md) for architecture, source ow
 
 - `portal/`: frontend source and browser checks.
 - `api/`: backend source, migrations, and integration tests.
-- `worker/`: independently deployed Jira synchronization process.
+- `worker/`: independently deployed Jira synchronization and asynchronous export process.
 - `docs/`: technical documentation.
 - `scripts/`: repository setup utilities.
 

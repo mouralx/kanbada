@@ -9,6 +9,7 @@ COPY worker/ ./worker/
 RUN dotnet publish worker/Kanbada.Worker.csproj -c Release --no-restore -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core && rm -r /var/lib/apt/lists
 WORKDIR /app
 COPY --from=build /app ./
 ENTRYPOINT ["dotnet", "Kanbada.Worker.dll"]

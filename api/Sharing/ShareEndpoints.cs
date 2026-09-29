@@ -12,7 +12,7 @@ public static class ShareEndpoints
         {
             var user = Auth.User(ctx);
             var workspace = await db.WorkspaceId(id, user);
-            await store.Read(workspace, user);
+            await store.Read(workspace, user, cardIds: [], sharedNotificationsOnly: true);
             var share = await context.Shares.AsNoTracking().SingleOrDefaultAsync(x => x.WorkspaceId == workspace && x.CardId == cardId.ToUpperInvariant());
             return share is null ? Results.Text("null", "application/json") : Results.Ok(new { share.Token, share.Access, share.ExpiresAt, share.CreatedAt, cardId, workspaceId = id, sourcePrefix = "" });
         });
@@ -31,7 +31,7 @@ public static class ShareEndpoints
                 throw new ApiError(400, "Invalid sharing settings.");
             var user = Auth.User(ctx);
             var workspace = await db.WorkspaceId(id, user);
-            var state = (await store.Read(workspace, user)).State;
+            var state = (await store.Read(workspace, user, cardIds: [cardId.ToUpperInvariant()], sharedNotificationsOnly: true)).State;
             cardId = cardId.ToUpperInvariant();
             if (!WorkspaceJson.Items(state, "tasks").Any(t => WorkspaceJson.Text(t, "id") == cardId))
                 throw new ApiError(404, "Card not found.");
@@ -90,7 +90,7 @@ public static class ShareEndpoints
             ["expiresAt"] = link.ExpiresAt?.ToString("O"),
             ["createdAt"] = link.CreatedAt.ToString("O")
         };
-        var state = (await store.Read(workspace, user, true)).State;
+        var state = (await store.Read(workspace, user, true, [card], sharedNotificationsOnly: true)).State;
         var task = WorkspaceJson.Items(state, "tasks").FirstOrDefault(t => WorkspaceJson.Text(t, "id") == card) ?? throw new ApiError(404, "Card not found.");
         var data = new JsonObject
         {

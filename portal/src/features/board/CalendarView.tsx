@@ -11,7 +11,7 @@ type CalendarViewProps = {
   setMonth: React.Dispatch<React.SetStateAction<number>>;
   setYear: React.Dispatch<React.SetStateAction<number>>;
   filtered: Task[];
-  setDraft: React.Dispatch<React.SetStateAction<Task | null>>;
+  setDraft: (task: Task | null) => void;
   data: State;
 };
 

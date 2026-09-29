@@ -15,25 +15,25 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
     private static string? Optional(JsonNode? value, string key) => value?[key]?.GetValue<string>();
     private static bool Flag(JsonNode? value, string key) => value?[key]?.GetValue<bool>() ?? false;
 
-    public async Task Load(Guid id)
+    public async Task Load(Guid id, string[]? cardIds = null, bool sharedNotificationsOnly = false)
     {
-        readOnlyCardIds = (await JiraCardPolicy.ReadOnlyCardIds(db, id).ToListAsync()).ToHashSet();
+        readOnlyCardIds = (await JiraCardPolicy.ReadOnlyCardIds(db, id).Where(x => cardIds == null || cardIds.Contains(x)).ToListAsync()).ToHashSet();
         await db.Set<MemberEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<ProjectEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<StatusEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<BucketEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<LabelEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<SwimlaneEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<CardEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<CardLabelEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<CardAssigneeEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<CardAttachmentEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<CardCommentEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<ChecklistItemEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<HistoryEntryEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<HistoryChangeEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
+        await db.Set<CardEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.Id))).LoadAsync();
+        await db.Set<CardLabelEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.CardId))).LoadAsync();
+        await db.Set<CardAssigneeEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.CardId))).LoadAsync();
+        await db.Set<CardAttachmentEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.CardId))).LoadAsync();
+        await db.Set<CardCommentEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.CardId))).LoadAsync();
+        await db.Set<ChecklistItemEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.CardId))).LoadAsync();
+        await db.Set<HistoryEntryEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.CardId))).LoadAsync();
+        await db.Set<HistoryChangeEntity>().Where(x => x.WorkspaceId == id && (cardIds == null || cardIds.Contains(x.CardId))).LoadAsync();
         await db.Set<ActivityEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
-        await db.Set<NotificationEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
+        await db.Set<NotificationEntity>().Where(x => x.WorkspaceId == id && (!sharedNotificationsOnly || x.RecipientId == null)).LoadAsync();
     }
 
     public JsonObject Read(WorkspaceEntity workspace, Guid user)
@@ -124,7 +124,8 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
     public async Task AddAttachmentMetadata(JsonObject state, Guid id)
     {
         // Project metadata only: loading a board never loads the binary documents.
-        var files = await db.Files.Where(x => x.WorkspaceId == id).Select(x => new { x.Id, x.Name, size = x.Bytes.Length, type = x.ContentType, addedAt = x.CreatedAt }).ToDictionaryAsync(x => x.Id);
+        var fileIds = db.CardAttachments.Local.Where(x => x.WorkspaceId == id).Select(x => x.FileId).Distinct().ToArray();
+        var files = await db.Files.Where(x => x.WorkspaceId == id && fileIds.Contains(x.Id)).Select(x => new { x.Id, x.Name, size = x.Bytes.Length, type = x.ContentType, addedAt = x.CreatedAt }).ToDictionaryAsync(x => x.Id);
         var detectChanges = db.ChangeTracker.AutoDetectChangesEnabled;
         db.ChangeTracker.AutoDetectChangesEnabled = false;
         try
@@ -160,16 +161,23 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
             .Concat(personal.Values.Where(n => n.RecipientId != user || retained.Contains(n.Id))));
     }
 
-    public void Apply(Guid id, JsonObject state, Guid? user = null)
+    public void Apply(Guid id, JsonObject state, Guid? user = null, int? nextPosition = null)
     {
         // SetValues marks changed properties itself. Defer the graph scan until SaveChangesAsync.
         var detectChanges = db.ChangeTracker.AutoDetectChangesEnabled;
+        var cascadeTiming = db.ChangeTracker.CascadeDeleteTiming;
         db.ChangeTracker.AutoDetectChangesEnabled = false;
-        try { ApplyCore(id, state, user); }
-        finally { db.ChangeTracker.AutoDetectChangesEnabled = detectChanges; }
+        // Parents and their removed dependents are reconciled in the same pass.
+        db.ChangeTracker.CascadeDeleteTiming = Microsoft.EntityFrameworkCore.ChangeTracking.CascadeTiming.OnSaveChanges;
+        try { ApplyCore(id, state, user, nextPosition); }
+        finally
+        {
+            db.ChangeTracker.AutoDetectChangesEnabled = detectChanges;
+            db.ChangeTracker.CascadeDeleteTiming = cascadeTiming;
+        }
     }
 
-    private void ApplyCore(Guid id, JsonObject state, Guid? user)
+    private void ApplyCore(Guid id, JsonObject state, Guid? user, int? nextPosition)
     {
         var workspace = db.Workspaces.Local.Single(x => x.Id == id);
         workspace.Name = Text(state["workspace"], "name");
@@ -186,11 +194,15 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
         SyncNotifications(id, WorkspaceJson.Items(state, "notifications"), user);
         string Definition(string collection, string name) => Text(WorkspaceJson.Items(state, collection).Single(x => Text(x, "name") == name), "id");
         var cards = WorkspaceJson.Items(state, "tasks");
+        var positions = db.Cards.Local.Where(x => x.WorkspaceId == id).ToDictionary(x => x.Id, x => x.Position);
+        var next = nextPosition.GetValueOrDefault();
+        int Position(string cardId, int position) => nextPosition is null ? position
+            : positions.TryGetValue(cardId, out var existing) ? existing : next++;
         Sync(id, cards.Select((x, position) => new CardEntity
         {
             WorkspaceId = id,
             Id = Text(x, "id"),
-            Position = position,
+            Position = Position(Text(x, "id"), position),
             ProjectId = Text(x, "project"),
             StatusId = Definition("statuses", Text(x, "status")),
             BucketId = Text(x, "bucket") == "" ? null : Definition("buckets", Text(x, "bucket")),

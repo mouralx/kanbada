@@ -15,7 +15,7 @@ public static class WorkspaceEndpoints
             var id = await store.Create(user, input.Name);
             return Results.Ok((await store.Read(id, user)).State);
         });
-        api.MapGet("/workspaces/{id}", async (string id, WorkspaceResolver db, KanbadaDbContext context, WorkspaceStore store, HttpContext ctx) =>
+        api.MapGet("/workspaces/{id}", async (string id, bool? metadataOnly, WorkspaceResolver db, KanbadaDbContext context, WorkspaceStore store, HttpContext ctx) =>
         {
             var user = Auth.User(ctx);
             var workspace = await db.WorkspaceId(id, user);
@@ -25,7 +25,7 @@ public static class WorkspaceEndpoints
             ctx.Response.Headers.CacheControl = "private, no-store";
             if (ctx.Request.Headers.IfNoneMatch.ToString().Split(',').Any(tag => tag.Trim() == "\"" + version + "\""))
                 return Results.StatusCode(304);
-            var result = await store.Read(workspace, user);
+            var result = await store.Read(workspace, user, cardIds: metadataOnly == true ? [] : null, sharedNotificationsOnly: metadataOnly == true);
             ctx.Response.Headers.ETag = "\"" + result.Version + "\"";
             return Results.Ok(result.State);
         });
@@ -43,6 +43,23 @@ public static class WorkspaceEndpoints
             ctx.Response.Headers.ETag = "\"" + version + "\"";
             return new ChangeResult(version, StateChanges.Diff(before.State, saved));
         }).WithName("ApplyWorkspaceChanges");
+        api.MapPatch("/workspaces/{id}/changes", async (string id, PartialChangeRequest request, WorkspaceResolver resolver, WorkspaceStore store, HttpContext ctx) =>
+        {
+            if (!long.TryParse(ctx.Request.Headers.IfMatch.ToString().Trim('"'), out var expected))
+                throw new ApiError(428, "An If-Match workspace version is required.");
+            var user = Auth.User(ctx);
+            return await PartialWorkspaceChanges.Save(await resolver.WorkspaceId(id, user), user, expected, request, store);
+        });
+        api.MapGet("/workspaces/{id}/cards", async (string id, [AsParameters] CardQuery query, int? limit, string? after, WorkspaceResolver resolver, CardQueries cards, HttpContext ctx) =>
+        {
+            var user = Auth.User(ctx);
+            return await cards.Page(await resolver.WorkspaceId(id, user), user, query, limit, after);
+        });
+        api.MapGet("/workspaces/{id}/card-summary", async (string id, [AsParameters] CardQuery query, WorkspaceResolver resolver, CardQueries cards, HttpContext ctx) =>
+        {
+            var user = Auth.User(ctx);
+            return await cards.Summary(await resolver.WorkspaceId(id, user), user, query);
+        });
         api.MapPut("/workspaces/{id}", async (string id, JsonObject state, WorkspaceResolver db, WorkspaceStore store, HttpContext ctx) =>
         {
             if (!long.TryParse(ctx.Request.Headers.IfMatch.ToString().Trim('"'), out var version))
@@ -56,10 +73,11 @@ public static class WorkspaceEndpoints
             await store.Delete(await db.WorkspaceId(id, user), user);
             return Results.NoContent();
         });
-        api.MapGet("/workspaces/{id}/export", async (string id, WorkspaceResolver db, WorkspaceStore store, HttpContext ctx) =>
+        api.MapGet("/workspaces/{id}/export", async (string id, WorkspaceResolver db, CardQueries cards, HttpContext ctx) =>
         {
             var user = Auth.User(ctx);
-            return Results.File(System.Text.Encoding.UTF8.GetBytes((await store.Read(await db.WorkspaceId(id, user), user)).State.ToJsonString()), "application/json", "workspace.json");
+            await cards.Authorize(await db.WorkspaceId(id, user), user);
+            throw new ApiError(410, "Synchronous exports are no longer available. Use POST /api/workspaces/{id}/exports with kind workspace-json.");
         });
         // Granular reads mirror the state collections used by the portal. Writes use an atomic, versioned workspace transaction.
         api.MapGet("/workspaces/{id}/{collection}", async (string id, string collection, WorkspaceResolver db, WorkspaceStore store, HttpContext ctx) =>
@@ -83,7 +101,7 @@ public static class WorkspaceEndpoints
         api.MapGet("/workspaces/{id}/cards/{cardId}", async (string id, string cardId, WorkspaceResolver db, WorkspaceStore store, HttpContext ctx) =>
         {
             var user = Auth.User(ctx);
-            var state = (await store.Read(await db.WorkspaceId(id, user), user)).State;
+            var state = (await store.Read(await db.WorkspaceId(id, user), user, cardIds: [cardId.ToUpperInvariant()], sharedNotificationsOnly: true)).State;
             return WorkspaceJson.Items(state, "tasks").FirstOrDefault(t => WorkspaceJson.Text(t, "id").Equals(cardId, StringComparison.OrdinalIgnoreCase)) ?? throw new ApiError(404, "Card not found.");
         });
         api.MapGet("/workspaces/{id}/metrics", async (string id, string? project, string? bucket, string? swimlane, WorkspaceResolver db, WorkspaceMetrics metrics, HttpContext ctx) =>

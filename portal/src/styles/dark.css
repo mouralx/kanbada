@@ -1360,6 +1360,9 @@
     border-color: #686d78;
     background: #1b1d21
 }
+:root[data-theme="dark"] .export-job {
+    border: 1px solid var(--border, #383b42)
+}
 :root[data-theme="dark"]{--line:#383b42;--muted:#a6a8ae;--green:#9aacbf;color-scheme:dark}
 :root[data-theme="dark"] .avatar{color:#26384e}
 :root[data-theme="dark"] .completion-donut>span{background:#232529}

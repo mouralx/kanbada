@@ -227,12 +227,16 @@ try {
   });
   assert.equal(created.status(), 201);
   const card = await created.json();
-  await page.route('**/api/workspaces/studio', async (route) => {
+  await page.route(/\/api\/workspaces\/studio\/cards(?:\?|\/KB-)/, async (route) => {
     const response = await route.fetch();
     if (route.request().method() !== 'GET' || response.status() !== 200)
       return route.fulfill({ response });
     const state = await response.json();
-    const linked = state.tasks.find((task) => task.id === card.id);
+    const linked = state.items
+      ? state.items.find((task) => task.id === card.id)
+      : state.id === card.id
+        ? state
+        : null;
     if (linked) linked.readOnly = true;
     return route.fulfill({ response, json: state });
   });

@@ -165,6 +165,17 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             var state = await Body(await client.GetAsync("/api/workspaces/studio"));
             var task = state["tasks"]!.AsArray().Single(t => t!["id"]!.GetValue<string>() == cardId)!;
             Assert.True(task["readOnly"]!.GetValue<bool>());
+            using (var partial = new HttpRequestMessage(HttpMethod.Patch, "/api/workspaces/studio/changes"))
+            {
+                partial.Headers.TryAddWithoutValidation("If-Match", state["version"]!.ToString());
+                partial.Content = JsonContent.Create(new
+                {
+                    changes = Array.Empty<object>(),
+                    removed = Array.Empty<string>(),
+                    upserts = new[] { new CardEdit(cardId, [new StateChange("replace", "/tasks/0/title", JsonValue.Create("Cannot edit"))]) }
+                });
+                Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(partial)).StatusCode);
+            }
             var index = state["tasks"]!.AsArray().IndexOf(task);
             async Task<HttpStatusCode> Patch(string op, string path, JsonNode? value)
             {
@@ -208,7 +219,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     private readonly Dictionary<string, string> loginCodes = new();
-    static async Task<JsonObject> Body(HttpResponseMessage response)
+    internal static async Task<JsonObject> Body(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, $"{response.StatusCode}: {text}");
@@ -216,6 +227,13 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     async Task<(HttpClient Client, string Email)> User()
+    {
+        var (client, email, code) = await CreateUser(fixture);
+        loginCodes[email] = code;
+        return (client, email);
+    }
+
+    internal static async Task<(HttpClient Client, string Email, string Code)> CreateUser(ApiFixture fixture)
     {
         var c = fixture.Client();
         var email = Guid.NewGuid() + "@example.test";
@@ -230,11 +248,10 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         var setup = await factor.Setup(id, "Correct-Horse-Test-Password");
         var code = new Totp(Base32Encoding.ToBytes(setup.Secret)).ComputeTotp();
         var recovery = await factor.Confirm(id, new TwoFactorInput("Correct-Horse-Test-Password", code), sid);
-        loginCodes[email] = recovery.Codes[0];
-        return (c, email);
+        return (c, email, recovery.Codes[0]);
     }
 
-    static async Task<JsonObject> Save(HttpClient c, JsonObject state)
+    internal static async Task<JsonObject> Save(HttpClient c, JsonObject state)
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, "/api/workspaces/" + state["workspace"]!["id"]!.GetValue<string>());
         request.Headers.TryAddWithoutValidation("If-Match", state["version"]!.ToString());

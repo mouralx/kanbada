@@ -2,6 +2,7 @@ import { Archive, ArrowUpRight, Folder, LockKeyhole, Plus, RotateCcw, Trash2 } f
 import { type Definition, type Project, type Task } from '../../domain/models';
 import { isActivitiesProject } from '../../domain/projectRules';
 import { useI18n } from '../../shared/i18n';
+import { sumGroups, type CardSummary } from '../../infrastructure/cards';
 export function ProjectDirectory({
   projects,
   tasks,
@@ -14,6 +15,7 @@ export function ProjectDirectory({
   onArchive,
   onRestore,
   onDelete,
+  summary,
 }: {
   projects: Project[];
   tasks: Task[];
@@ -26,6 +28,7 @@ export function ProjectDirectory({
   onArchive: (project: Project) => void;
   onRestore: (project: Project) => void;
   onDelete: (project: Project) => void;
+  summary?: CardSummary | null;
 }) {
   const { t } = useI18n();
   const matching = projects.filter(
@@ -54,10 +57,12 @@ export function ProjectDirectory({
       <div className="directory-list">
         {matching.map((project) => {
           const cards = tasks.filter((t) => t.project === project.id);
-          const completed = cards.filter(
-            (t) => statuses.find((s) => s.name === t.status)?.complete,
-          ).length;
-          const progress = cards.length ? Math.round((completed / cards.length) * 100) : 0;
+          const counts = sumGroups(summary ?? null, (g) => g.project === project.id);
+          const total = summary ? counts.total : cards.length;
+          const completed = summary
+            ? counts.completed
+            : cards.filter((t) => statuses.find((s) => s.name === t.status)?.complete).length;
+          const progress = total ? Math.round((completed / total) * 100) : 0;
           return (
             <article className="directory-project" key={project.id}>
               <span className="directory-project-icon" style={{ background: project.color }}>
@@ -70,7 +75,7 @@ export function ProjectDirectory({
                 </button>
                 <p>{isActivitiesProject(project) ? t(project.description) : project.description}</p>
                 <small>
-                  {cards.length}
+                  {total}
                   {' ' + t('cards \u00B7') + ' '}
                   {completed}
                   {' ' + t('completed')}

@@ -18,7 +18,7 @@ With PostgreSQL running:
 dotnet test api/tests/Kanbada.Api.Tests/Kanbada.Api.Tests.csproj
 ```
 
-With API and portal running at the documented ports:
+With API, worker and portal running at the documented ports:
 
 ```sh
 npm --prefix portal test
@@ -79,6 +79,32 @@ Core browser checks also cover sharing load errors and retry, first-time link
 creation, reloading saved access/expiration, revocation and dropdown sizing.
 The API sharing regression requires an explicit JSON `null` response when no
 link exists, rather than an empty successful response.
+
+`npm --prefix portal run test:pagination` uses 125 cards to verify empty-card
+bootstrap, 40-card board batches, scroll-triggered downloads, remote search,
+list paging, complete dashboard totals, queued JSON/PDF exports, direct links to unloaded
+cards, edits preserving other cards, and paged notification clearing. Run it
+separately from the main browser suite to avoid the shared development server's
+20-authentication-requests/minute limit (wait a minute between suites).
+
+Export browser checks require the **worker** alongside the API and portal.
+They follow jobs in Exports, download completed files, check history survives
+reloads, and ensure API-mode exports neither fetch all card pages nor load the
+browser PDF renderer. `ExportTests` uses small multi-page datasets to cover
+private ownership, concurrent idempotent submissions, complete JSON/chunks,
+snapshot consistency during edits, bounded EF tracking, filtered Portuguese PDFs,
+interrupted-job recovery, advisory locks, failure reporting, history pagination
+and seven-day expiry/cleanup. Run it with
+`dotnet test api/tests/Kanbada.Api.Tests --filter FullyQualifiedName~ExportTests`.
+To run the API suite without the optional million-card regression, use
+`dotnet test api/tests/Kanbada.Api.Tests --filter 'FullyQualifiedName!~MillionCard'`.
+
+`PaginationTests` covers page bounds, stable ordering, all filters, exact
+title/label/ID search, invalid/stale/query-mismatched cursors, authorization,
+structural renames, preserved positions and notification paging.
+Its optional scale regression inserts **1,000,000 cards** into an isolated schema
+and verifies metadata tracks zero cards, a 40-card response tracks only 40 cards
+and stays below 32 KB, and detail reads/edits and totals still work.
 
 `npm test` runs `scripts/check-api-browser.mjs` against the real API. It creates a unique development account and verifies sign-in, Help search/FAQ/Portuguese (56 articles, Jira category, SVG, recovery codes and read-only guidance), card persistence and history, PDF export, dark theme, member profile editing, drawer blur, full-width layouts, and creating a card through Scalar’s actual Send Request UI. The test reports browser exceptions. It intentionally leaves its test account and card in the development database; do not run against production.
 

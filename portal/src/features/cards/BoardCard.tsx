@@ -16,7 +16,7 @@ import { CardLabels } from './CardLabels';
 type BoardCardProps = {
   task: Task;
   isDone: (task: Task) => boolean;
-  setDraft: React.Dispatch<React.SetStateAction<Task | null>>;
+  setDraft: (task: Task | null) => void;
   t: (value: unknown, ...values: unknown[]) => string;
   data: State;
   locale: Locale;

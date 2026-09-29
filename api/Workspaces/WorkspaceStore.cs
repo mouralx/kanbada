@@ -6,15 +6,21 @@ namespace Kanbada.Api;
 
 public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
 {
-    public async Task<(JsonObject State, long Version, Guid Owner, bool Personal)> Read(Guid id, Guid user, bool shared = false)
+    public async Task<(JsonObject State, long Version, Guid Owner, bool Personal)> Read(Guid id, Guid user, bool shared = false, string[]? cardIds = null, bool sharedNotificationsOnly = false)
     {
         // A repeatable-read transaction keeps the separately queried collections at the same version.
         var ownTransaction = db.Database.CurrentTransaction is null;
         await using var transaction = ownTransaction ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead) : null;
         var workspace = await db.Workspaces.SingleOrDefaultAsync(x => x.Id == id && (shared || db.Members.Any(m => m.WorkspaceId == id && m.UserId == user)))
             ?? throw new ApiError(404, "Workspace not found or access denied.");
-        await mapper.Load(id);
+        await mapper.Load(id, cardIds, sharedNotificationsOnly);
         var state = mapper.Read(workspace, user);
+        if (sharedNotificationsOnly)
+        {
+            var sharedIds = db.Notifications.Local.Where(n => n.WorkspaceId == id && n.RecipientId == null).Select(n => n.Id).ToHashSet();
+            state["notifications"] = new JsonArray(WorkspaceJson.Items(state, "notifications").Where(n => sharedIds.Contains(WorkspaceJson.Text(n, "id"))).Select(n => n!.DeepClone()).ToArray());
+            state["notificationCount"] = await db.Notifications.CountAsync(n => n.WorkspaceId == id && (n.RecipientId == null || n.RecipientId == user));
+        }
         await mapper.AddAttachmentMetadata(state, id);
         if (transaction is not null) await transaction.CommitAsync();
         return (state, workspace.Version, workspace.OwnerId, workspace.Personal);
@@ -43,10 +49,10 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
         return id;
     }
 
-    public async Task<JsonObject> Save(Guid id, Guid user, JsonObject state, long expected)
+    public async Task<JsonObject> Save(Guid id, Guid user, JsonObject state, long expected, string[]? cardIds = null, bool sharedNotificationsOnly = false)
     {
         await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead);
-        var old = await Read(id, user);
+        var old = await Read(id, user, cardIds: cardIds, sharedNotificationsOnly: sharedNotificationsOnly);
         if (old.Version != expected)
             throw new ApiError(409, "This workspace changed. Refresh before saving to avoid overwriting someone else's changes.");
         WorkspaceValidator.Validate(state, old.Personal);
@@ -116,6 +122,7 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
         }
 
         var taskIds = new HashSet<string>();
+        var previousTasks = WorkspaceJson.Items(old.State, "tasks").ToDictionary(t => WorkspaceJson.Text(t, "id"));
         var memberNames = nextMembers.Select(m => WorkspaceJson.Text(m, "name")).ToHashSet();
         foreach (var task in WorkspaceJson.Items(state, "tasks"))
         {
@@ -134,7 +141,7 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
                     throw new ApiError(400, "A card references an unavailable file.");
             }
 
-            var before = WorkspaceJson.Items(old.State, "tasks").FirstOrDefault(t => WorkspaceJson.Text(t, "id") == tid);
+            previousTasks.TryGetValue(tid, out var before);
             task["history"] = CardHistory.Record(before, task, WorkspaceJson.Text(actor, "name"));
         }
 
@@ -147,17 +154,20 @@ public sealed class WorkspaceStore(KanbadaDbContext db, WorkspaceMapper mapper)
             var stored = db.Members.Local.SingleOrDefault(x => x.WorkspaceId == id && x.Email == WorkspaceJson.Text(member, "email").ToLowerInvariant());
             if (stored is not null) member!["invitationToken"] = stored.InviteToken;
         }
-        mapper.Apply(id, state, user);
+        var nextPosition = cardIds is null ? (int?)null : (await db.Cards.Where(x => x.WorkspaceId == id).MaxAsync(x => (int?)x.Position) ?? -1) + 1;
+        mapper.Apply(id, state, user, nextPosition);
         await AssignmentNotifications.CreateForNewAssignments(db, id, default);
         var workspace = db.Workspaces.Local.Single(x => x.Id == id);
         workspace.Version++;
         workspace.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
         var removedFiles = previousFiles.Except(keptFiles).Select(Guid.Parse).ToArray();
-        await db.Files.Where(x => x.WorkspaceId == id && removedFiles.Contains(x.Id)).ExecuteDeleteAsync();
+        await db.Files.Where(x => x.WorkspaceId == id && removedFiles.Contains(x.Id)
+            && !db.CardAttachments.Any(a => a.WorkspaceId == id && a.FileId == x.Id)).ExecuteDeleteAsync();
         await tx.CommitAsync();
         await tx.DisposeAsync();
-        return (await Read(id, user)).State;
+        var savedIds = cardIds is null ? null : WorkspaceJson.Items(state, "tasks").Select(t => WorkspaceJson.Text(t, "id")).ToArray();
+        return (await Read(id, user, cardIds: savedIds, sharedNotificationsOnly: sharedNotificationsOnly)).State;
     }
 
     public async Task Delete(Guid id, Guid user)

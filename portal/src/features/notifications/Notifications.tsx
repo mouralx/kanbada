@@ -1,23 +1,29 @@
 import { Bell, CheckCheck, X } from 'lucide-react';
 import type { Notification } from '../../domain/models';
 import { useI18n } from '../../shared/i18n';
+import { useCallback, useState } from 'react';
+import { apiRequest } from '../../infrastructure/apiClient';
+import { cardPath } from '../../infrastructure/cards';
+import { PagedCollection } from '../board/PagedCards';
 export function Notifications({
   items,
   busy,
   onClear,
   onDismiss,
+  total = items.length,
 }: {
   items: Notification[];
   busy: boolean;
   onClear: () => void;
   onDismiss: (id: string) => void;
+  total?: number;
 }) {
   const { t, locale } = useI18n();
   return (
     <section className="notifications-panel">
       <div className="notifications-toolbar">
-        <span>{t('{0} unread notifications', items.length)}</span>
-        <button className="text-button" disabled={busy || !items.length} onClick={onClear}>
+        <span>{t('{0} unread notifications', total)}</span>
+        <button className="text-button" disabled={busy || !total} onClick={onClear}>
           <CheckCheck size={15} />
           {t('Clear notifications')}
         </button>
@@ -59,5 +65,65 @@ export function Notifications({
         {t('Clearing notifications keeps card history and workspace activity intact.')}
       </p>
     </section>
+  );
+}
+
+export function RemoteNotifications({
+  workspace,
+  version,
+  onChanged,
+}: {
+  workspace: string;
+  version: number;
+  onChanged: () => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const loadPage = useCallback(
+    (after: string | undefined, signal: AbortSignal) =>
+      apiRequest<{ items: Notification[]; total: number; nextCursor: string | null }>(
+        cardPath(workspace) +
+          '/notification-feed' +
+          (after ? '?after=' + encodeURIComponent(after) : ''),
+        { signal },
+      ),
+    [workspace],
+  );
+  const dismiss = async (id?: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      await apiRequest(
+        cardPath(workspace) +
+          '/notification-feed' +
+          (id ? '?notificationId=' + encodeURIComponent(id) : ''),
+        {
+          method: 'DELETE',
+          headers: { 'If-Match': String(version) },
+        },
+      );
+      await onChanged();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not save changes.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      {error && <p role="alert">{t(error)}</p>}
+      <PagedCollection key={workspace + ':' + version} loadPage={loadPage}>
+        {(items, total) => (
+          <Notifications
+            items={items}
+            total={total}
+            busy={busy}
+            onClear={() => void dismiss()}
+            onDismiss={(id) => void dismiss(id)}
+          />
+        )}
+      </PagedCollection>
+    </>
   );
 }

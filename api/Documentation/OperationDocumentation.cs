@@ -16,7 +16,8 @@ public static class OperationDocumentation
         var example = ApiOperationCatalog.Operations.SingleOrDefault(item => item.Method == method && item.Path == path)
             ?? throw new InvalidOperationException($"Add API documentation for {method} {path}.");
         var mutation = method is "POST" or "PUT" or "PATCH" or "DELETE";
-        var workspaceVersion = path == "/api/workspaces/{id}" && method is "PUT" or "PATCH";
+        var workspaceVersion = ((path == "/api/workspaces/{id}" || path == "/api/workspaces/{id}/changes") && method is "PUT" or "PATCH")
+            || (path.EndsWith("/notification-feed") && method == "DELETE");
         operation.Summary = example.Summary;
         operation.OperationId ??= method.ToLowerInvariant() + Regex.Replace(path, "[^a-zA-Z0-9]", "_");
         operation.Description = example.Description + "\n\n### Example request\n```http\n" + method + " " + example.ExampleUrl
@@ -53,23 +54,39 @@ public static class OperationDocumentation
         Schema = new OpenApiSchema { Type = JsonSchemaType.String, Default = JsonValue.Create(example) }
     };
 
-    private static (string Value, string Description) ParameterExample(string name, string path, string method) => name switch
+    private static (string Value, string Description) ParameterExample(string name, string path, string method) => name.ToLowerInvariant() switch
     {
         "id" when path.Contains("/files/") => (ApiExamples.FileId, "File UUID from upload metadata; must be available to this account/card link."),
         "id" when method == "DELETE" => (ApiExamples.WorkspaceId, "Non-personal workspace UUID from GET /api/workspaces. Personal workspaces cannot be deleted."),
         "id" => ("studio", "Workspace UUID, or studio for the signed-in user's personal workspace."),
-        "cardId" => (ApiExamples.CardId, "Card identifier returned by Create card. Case-insensitive lookup; stored IDs are uppercase."),
+        "cardid" => (ApiExamples.CardId, "Card identifier returned by Create card. Case-insensitive lookup; stored IDs are uppercase."),
         "token" => (ApiExamples.Token, "Illustrative token only. Replace with a real, unexpired sharing or invitation token returned by the API."),
         "provider" => ("google", "External provider: google or microsoft. Both client ID and client secret must be configured."),
-        "returnUrl" => ("/", "Local portal path after sign-in. For example /?workspace=studio&card=KB-A1B2C3D4. External destinations are rejected in favor of /."),
+        "returnurl" => ("/", "Local portal path after sign-in. For example /?workspace=studio&card=KB-A1B2C3D4. External destinations are rejected in favor of /."),
         "project" => ("my-activities", "Optional exact project ID. Omit for all active projects."),
-        "projectId" => ("my-activities", "Exact Kanbada project ID in this workspace."),
-        "linkId" => ("73716be0-a56b-4589-a5f6-2bf96a531132", "Pending synchronization link UUID from connection.problems, not a Jira issue ID."),
+        "projectid" => ("my-activities", "Exact Kanbada project ID in this workspace."),
+        "linkid" => ("73716be0-a56b-4589-a5f6-2bf96a531132", "Pending synchronization link UUID from connection.problems, not a Jira issue ID."),
+        "exportid" => ("73716be0-a56b-4589-a5f6-2bf96a531132", "Export UUID from the queue response or your private export history."),
         "bucket" => ("Discovery", "Optional exact stored bucket name. Omit for all buckets."),
-        "swimlane" => ("Research", "Optional exact stored swimlane name; combine with project to disambiguate. Omit for all swimlanes."),
+        "swimlane" => (path.EndsWith("/metrics") ? "Research" : "lane-research", "For paged cards/summary: swimlane ID, empty for no swimlane, omitted for all. Legacy metrics uses the stored name."),
+        "metadataonly" => ("true", "Return workspace metadata without loading cards. Omit for the legacy full snapshot."),
+        "notificationid" => ("notice-1", "Notification ID to dismiss; omit to clear all visible notifications."),
+        "limit" => ("40", "Page size from 1 to 100; defaults to 40."),
+        "after" => ("", "Omit on the first request. Otherwise use nextCursor from the preceding page with unchanged filters."),
+        "mine" => ("true", "Only cards assigned to the current account in active projects."),
+        "active" => ("true", "Exclude archived projects."),
+        "search" => ("design", "Case-insensitive search of card titles, IDs and labels."),
+        "priority" => ("High", "Exact priority: Low, Medium or High."),
+        "person" => ("Alex Morgan", "Exact assignee display name."),
+        "status" => ("Backlog", "Exact stored status name."),
+        "completion" => ("Open", "Open, Completed or Overdue; omit for all."),
+        "from" => ("2026-09-01", "Inclusive due-date lower bound (yyyy-MM-dd)."),
+        "to" => ("2026-09-30", "Inclusive due-date upper bound (yyyy-MM-dd)."),
+        "today" => ("2026-09-29", "Caller-local date for overdue and seven-day metrics; defaults to UTC today."),
+        "unassigned" => ("true", "Only cards with no assignees."),
         "collection" => ("tasks", "One of projects, tasks, members, statuses, buckets, labels, swimlanes, notifications, activity. Responses below include examples of every collection."),
-        "If-Match" => ("1", "Version from your latest workspace GET (not a fixed constant). Missing=428; stale=409."),
-        "X-Kanbada-Request" => ("1", "Required custom header on every mutation. Cookies provide authentication."),
+        "if-match" => ("1", "Version from your latest workspace GET (not a fixed constant). Missing=428; stale=409."),
+        "x-kanbada-request" => ("1", "Required custom header on every mutation. Cookies provide authentication."),
         _ => throw new InvalidOperationException("Add a parameter example for " + name)
     };
 

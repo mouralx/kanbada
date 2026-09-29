@@ -11,7 +11,7 @@ public static class FileEndpoints
         {
             var user = Auth.User(ctx);
             var workspace = await db.WorkspaceId(id, user);
-            await store.Read(workspace, user);
+            await store.Read(workspace, user, cardIds: [], sharedNotificationsOnly: true);
             var form = await ctx.Request.ReadFormAsync();
             var file = form.Files.GetFile("file") ?? throw new ApiError(400, "Choose a file.");
             if (file.Length > 25 * 1024 * 1024)

@@ -2090,6 +2090,13 @@
         border-left: 1px solid var(--ui-border)
     }
 }
+:is(:root, [data-platform-theme])[data-platform-theme] .export-job {
+    border: 1px solid var(--border, var(--ui-border));
+    border-radius: calc(12px * var(--ui-radius-scale))
+}
+:is(:root, [data-platform-theme])[data-platform-theme] .export-job h2 {
+    font-size: calc(16px * var(--ui-font-scale))
+}
 :is(:root, [data-platform-theme])[data-platform-theme] .jira-project-icon {
     border-radius: calc(12px * var(--ui-radius-scale));
     color: var(--ui-text)

@@ -67,6 +67,7 @@ export function differences(before: Json, after: Json, path = ''): Change[] {
 function editable(state: State): Json {
   const result = JSON.parse(JSON.stringify(state)) as Record<string, Json>;
   delete result.version;
+  delete result.notificationCount;
   for (const task of result.tasks as Record<string, Json>[]) delete task.history;
   for (const member of result.members as Record<string, Json>[]) {
     delete member.userId;

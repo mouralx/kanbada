@@ -212,7 +212,13 @@ namespace Kanbada.Api.Persistence.Migrations
 
                     b.HasIndex("WorkspaceId", "StatusId");
 
+                    b.HasIndex("WorkspaceId", "Position", "Id");
+
                     b.HasIndex("WorkspaceId", "ProjectId", "SwimlaneId");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "BucketId", "Position", "Id");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "StatusId", "Position", "Id");
 
                     b.ToTable("cards", null, t =>
                         {
@@ -273,6 +279,119 @@ namespace Kanbada.Api.Persistence.Migrations
                     b.HasKey("WorkspaceId", "CardId", "Position");
 
                     b.ToTable("checklist_items", (string)null);
+                });
+
+            modelBuilder.Entity("Kanbada.Api.ExportChunkEntity", b =>
+                {
+                    b.Property<Guid>("ExportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("export_id");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<byte[]>("Bytes")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("bytes");
+
+                    b.HasKey("ExportId", "Position");
+
+                    b.ToTable("export_chunks", (string)null);
+                });
+
+            modelBuilder.Entity("Kanbada.Api.ExportJobEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<long>("Bytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bytes");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("locale");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Processed")
+                        .HasColumnType("integer")
+                        .HasColumnName("processed");
+
+                    b.Property<string>("Query")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("query");
+
+                    b.Property<long?>("SnapshotVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("snapshot_version");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<int?>("Total")
+                        .HasColumnType("integer")
+                        .HasColumnName("total");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workspace_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.HasIndex("WorkspaceId", "UserId", "CreatedAt", "Id");
+
+                    b.ToTable("exports", (string)null);
                 });
 
             modelBuilder.Entity("Kanbada.Api.FileEntity", b =>
@@ -1328,6 +1447,30 @@ namespace Kanbada.Api.Persistence.Migrations
                     b.HasOne("Kanbada.Api.CardEntity", null)
                         .WithMany()
                         .HasForeignKey("WorkspaceId", "CardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Kanbada.Api.ExportChunkEntity", b =>
+                {
+                    b.HasOne("Kanbada.Api.ExportJobEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ExportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Kanbada.Api.ExportJobEntity", b =>
+                {
+                    b.HasOne("Kanbada.Api.UserEntity", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Kanbada.Api.WorkspaceEntity", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

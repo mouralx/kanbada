@@ -5581,3 +5581,62 @@ button:disabled {
 .avatar-upload input {
   width: 100%;
 }
+.card-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  min-height: 2.5rem;
+}
+.card-pagination small {
+  width: 100%;
+  text-align: center;
+}
+.exports-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.exports-toolbar p {
+  flex: 1 1 300px;
+}
+.exports-list {
+  display: grid;
+  gap: 12px;
+}
+.export-job {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid var(--border, #dbe4ef);
+  border-radius: 12px;
+}
+.export-job h2 {
+  font-size: 16px;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.export-job small {
+  display: block;
+}
+.export-job progress {
+  display: block;
+  max-width: 100%;
+  margin: 8px 0;
+}
+.export-job a {
+  flex-shrink: 0;
+  text-decoration: none;
+}
+@media (max-width: 600px) {
+  .export-job {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -51,6 +51,7 @@ export type Workspace = {
 export type Notification = { id: string; message: string; at: string; cardId?: string };
 export type State = {
   version?: number;
+  notificationCount?: number;
   notifications: Notification[];
   workspace: Workspace;
   tasks: Task[];

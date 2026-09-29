@@ -4,18 +4,21 @@ import type { State, Task } from '../../domain/models';
 import { isActivitiesProject } from '../../domain/projectRules';
 import { useI18n } from '../../shared/i18n';
 import { CardLabels } from '../cards/CardLabels';
+import { sumGroups, type CardSummary } from '../../infrastructure/cards';
 export function TaskList({
   tasks,
   data,
   onOpen,
   avatar,
   personal = false,
+  summary,
 }: {
   tasks: Task[];
   personal?: boolean;
   data: State;
   onOpen: (task: Task) => void;
   avatar: (name: string, small?: boolean) => ReactNode;
+  summary?: CardSummary | null;
 }) {
   const { t } = useI18n();
   const projectName = (id: string) => {
@@ -33,31 +36,42 @@ export function TaskList({
           .map((p) => ({
             name: projectName(p.id),
             tasks: tasks.filter((task) => task.project === p.id),
+            counts: summary ? sumGroups(summary, (g) => g.project === p.id) : undefined,
           }))
           .filter((group) => group.tasks.length)
       : groupBy === 'None'
-        ? [{ name: 'All matching cards', tasks }]
+        ? [{ name: 'All matching cards', tasks, counts: summary?.counts }]
         : groupBy === 'Bucket'
           ? [
               ...data.buckets.map((bucket) => ({
                 name: bucket.name,
                 tasks: tasks.filter((t) => t.bucket === bucket.name),
+                counts: summary ? sumGroups(summary, (g) => g.bucket === bucket.id) : undefined,
               })),
-              { name: 'No bucket', tasks: tasks.filter((t) => !t.bucket) },
+              {
+                name: 'No bucket',
+                tasks: tasks.filter((t) => !t.bucket),
+                counts: summary ? sumGroups(summary, (g) => !g.bucket) : undefined,
+              },
             ].filter((group) => group.tasks.length)
           : [
               ...data.swimlanes.map((lane) => ({
                 name: lane.name + ' · ' + (projectName(lane.project) ?? ''),
                 tasks: tasks.filter((t) => t.project === lane.project && t.swimlane === lane.name),
+                counts: summary ? sumGroups(summary, (g) => g.swimlane === lane.id) : undefined,
               })),
-              { name: 'No swimlane', tasks: tasks.filter((t) => !t.swimlane) },
+              {
+                name: 'No swimlane',
+                tasks: tasks.filter((t) => !t.swimlane),
+                counts: summary ? sumGroups(summary, (g) => !g.swimlane) : undefined,
+              },
             ].filter((group) => group.tasks.length);
   return (
     <section className="list-workspace">
       <div className="list-metrics-toolbar">
         <span>
           <Rows3 size={15} />
-          {tasks.length}
+          {summary?.counts.total ?? tasks.length}
           {' ' + t('matching cards')}
         </span>
         <label>
@@ -83,8 +97,11 @@ export function TaskList({
           <span>{t('Due date')}</span>
         </div>
         {groups.map((group) => {
-          const complete = group.tasks.filter(done).length;
-          const overdue = group.tasks.filter((t) => !done(t) && !!t.due && t.due < today).length;
+          const total = group.counts?.total ?? group.tasks.length;
+          const complete = group.counts?.completed ?? group.tasks.filter(done).length;
+          const overdue =
+            group.counts?.overdue ??
+            group.tasks.filter((t) => !done(t) && !!t.due && t.due < today).length;
           return (
             <section className="list-group" key={group.name} aria-label={group.name}>
               <header className="list-group-heading">
@@ -94,11 +111,11 @@ export function TaskList({
                 </strong>
                 <div>
                   <span>
-                    {group.tasks.length}
+                    {total}
                     {' ' + t('total')}
                   </span>
                   <span>
-                    {group.tasks.length - complete}
+                    {total - complete}
                     {' ' + t('open')}
                   </span>
                   <span>

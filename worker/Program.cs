@@ -23,6 +23,12 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(connection));
 builder.Services.AddDbContext<KanbadaDbContext>((services, options) => options.UseNpgsql(services.GetRequiredService<NpgsqlDataSource>()));
 builder.Services.AddJira(builder.Configuration, builder.Configuration["Jira:KeyDirectory"] ?? Path.Combine(builder.Environment.ContentRootPath, ".data-protection"));
 builder.Services.AddScoped<WorkspaceResolver>();
+builder.Services.AddScoped<WorkspaceMapper>();
+builder.Services.AddScoped<WorkspaceStore>();
+builder.Services.AddScoped<CardQueries>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<ExportProcessor>();
+builder.Services.AddHostedService<ExportWorker>();
 builder.Services.AddHostedService<JiraWorker>();
 await builder.Build().RunAsync();
 

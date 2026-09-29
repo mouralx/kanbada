@@ -22,6 +22,8 @@ AuthenticationEndpoints.Map(app, providers);
 PlatformBranding.Map(app);
 var api = app.MapGroup("/api").RequireAuthorization();
 WorkspaceEndpoints.Map(api);
+ExportEndpoints.Map(api);
+NotificationEndpoints.Map(api);
 CardEndpoints.Map(api);
 JiraEndpoints.Map(api);
 JiraHostApproval.Map(api);

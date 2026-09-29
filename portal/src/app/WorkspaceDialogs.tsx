@@ -5,7 +5,7 @@ import type { Member } from '../domain/models';
 import { type Definition, type Project, type State, type Task } from '../domain/models';
 import { isActivitiesProject } from '../domain/projectRules';
 import { CardShareDialog } from '../features/cards/CardShareDialog';
-import { Notifications } from '../features/notifications/Notifications';
+import { Notifications, RemoteNotifications } from '../features/notifications/Notifications';
 import { ProfileForm } from '../features/profile/ProfileForm';
 import { WorkflowManager } from '../features/workflow/WorkflowManager';
 import { WorkspaceAppearance } from '../features/workspaces/WorkspaceAppearance';
@@ -15,6 +15,7 @@ import { ThemeSelect } from '../shared/Theme';
 import { JiraSettings } from '../features/projects/JiraSettings';
 import { apiEnabled } from '../infrastructure/apiClient';
 import { PlatformSettings, PlatformSettingsButton } from '../features/workspaces/PlatformSettings';
+import { sumGroups, type CardSummary } from '../infrastructure/cards';
 
 type WorkspaceDialogsProps = {
   modal: string | null;
@@ -37,6 +38,8 @@ type WorkspaceDialogsProps = {
   saveDefinitions: (kind: 'statuses' | 'buckets', items: Definition[]) => Promise<void>;
   setProjectId: React.Dispatch<React.SetStateAction<string>>;
   navigate: (name: string) => void;
+  summary?: CardSummary | null;
+  onRefresh: () => Promise<void>;
 };
 
 export function WorkspaceDialogs({
@@ -60,6 +63,8 @@ export function WorkspaceDialogs({
   saveDefinitions,
   setProjectId,
   navigate,
+  summary,
+  onRefresh,
 }: WorkspaceDialogsProps) {
   return (
     modal && (
@@ -142,20 +147,28 @@ export function WorkspaceDialogs({
           ) : modal === 'Platform appearance' && apiEnabled ? (
             <PlatformSettings />
           ) : modal === 'Notifications' ? (
-            <Notifications
-              items={data.notifications}
-              busy={saving}
-              onClear={() =>
-                void commit({ ...data, notifications: [] }, 'Notifications cleared', false)
-              }
-              onDismiss={(id) =>
-                void commit(
-                  { ...data, notifications: data.notifications.filter((item) => item.id !== id) },
-                  undefined,
-                  false,
-                )
-              }
-            />
+            apiEnabled ? (
+              <RemoteNotifications
+                workspace={data.workspace.id}
+                version={data.version!}
+                onChanged={onRefresh}
+              />
+            ) : (
+              <Notifications
+                items={data.notifications}
+                busy={saving}
+                onClear={() =>
+                  void commit({ ...data, notifications: [] }, 'Notifications cleared', false)
+                }
+                onDismiss={(id) =>
+                  void commit(
+                    { ...data, notifications: data.notifications.filter((item) => item.id !== id) },
+                    undefined,
+                    false,
+                  )
+                }
+              />
+            )
           ) : modal === 'Share card' && draft ? (
             <CardShareDialog workspaceId={data.workspace.id} cardId={draft.id} />
           ) : modal === 'Workspace appearance' ? (
@@ -191,7 +204,9 @@ export function WorkspaceDialogs({
               <p>
                 <strong>{isActivitiesProject(project) ? t('My activities') : project.name}</strong>
                 {' ' + t('contains') + ' '}
-                {data.tasks.filter((t) => t.project === project.id).length}
+                {summary
+                  ? sumGroups(summary, (g) => g.project === project.id).total
+                  : data.tasks.filter((t) => t.project === project.id).length}
                 {' ' + t('cards.')}
               </p>
               <p>
@@ -224,25 +239,47 @@ export function WorkspaceDialogs({
             <WorkflowManager
               kind="labels"
               definitions={data.labels}
-              used={[...data.tasks.flatMap((task) => task.labels), ...(draft?.labels ?? [])]}
+              used={[
+                ...(summary
+                  ? data.labels.filter((l) => summary.usedLabels.includes(l.id)).map((l) => l.name)
+                  : data.tasks.flatMap((task) => task.labels)),
+                ...(draft?.labels ?? []),
+              ]}
               onSave={saveLabels}
             />
           ) : modal === 'Manage swimlanes' ? (
             <WorkflowManager
               kind="swimlanes"
               definitions={data.swimlanes.filter((lane) => lane.project === project.id)}
-              used={data.tasks
-                .filter((task) => task.project === project.id)
-                .map((task) => task.swimlane ?? '')}
+              used={
+                summary
+                  ? data.swimlanes
+                      .filter(
+                        (l) =>
+                          l.project === project.id &&
+                          summary.groups.some((g) => g.swimlane === l.id),
+                      )
+                      .map((l) => l.name)
+                  : data.tasks
+                      .filter((task) => task.project === project.id)
+                      .map((task) => task.swimlane ?? '')
+              }
               onSave={saveSwimlanes}
             />
           ) : modal === 'Manage statuses' || modal === 'Manage buckets' ? (
             <WorkflowManager
               kind={modal === 'Manage statuses' ? 'statuses' : 'buckets'}
               definitions={modal === 'Manage statuses' ? data.statuses : data.buckets}
-              used={data.tasks.map((t) =>
-                modal === 'Manage statuses' ? t.status : (t.bucket ?? ''),
-              )}
+              used={
+                summary
+                  ? (modal === 'Manage statuses'
+                      ? data.statuses.filter((s) => summary.groups.some((g) => g.status === s.id))
+                      : data.buckets.filter((b) => summary.groups.some((g) => g.bucket === b.id))
+                    ).map((d) => d.name)
+                  : data.tasks.map((t) =>
+                      modal === 'Manage statuses' ? t.status : (t.bucket ?? ''),
+                    )
+              }
               onSave={(items) =>
                 saveDefinitions(modal === 'Manage statuses' ? 'statuses' : 'buckets', items)
               }
