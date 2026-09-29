@@ -31,6 +31,8 @@ public static class ExportEndpoints
             await using var snapshot = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead, ct);
             var user = Auth.User(ctx);
             var job = await jobs.Find(await resolver.WorkspaceId(id, user), user, exportId, ct);
+            if (job.Kind is not ("project-xlsx" or "workspace-xlsx" or "dashboard-pdf"))
+                throw new ApiError(410, "This export format is no longer available. Request a new export.");
             if (job.ExpiresAt <= clock.GetUtcNow() || job.Status == "expired") throw new ApiError(410, "This export has expired. Request a new export.");
             if (job.Status != "completed") throw new ApiError(409, "This export is not ready to download.");
             ctx.Response.Headers.CacheControl = "private, no-store";
@@ -41,7 +43,7 @@ public static class ExportEndpoints
             {
                 await foreach (var bytes in db.ExportChunks.AsNoTracking().Where(c => c.ExportId == exportId).OrderBy(c => c.Position).Select(c => c.Bytes).AsAsyncEnumerable().WithCancellation(ct))
                     await stream.WriteAsync(bytes, ct);
-            }, pdf ? "application/pdf" : "application/json", $"kanbada-{job.Id}.{(pdf ? "pdf" : "json")}").ExecuteAsync(ctx);
+            }, pdf ? "application/pdf" : ExportWorkbook.ContentType, $"kanbada-{job.Id}.{(pdf ? "pdf" : "xlsx")}").ExecuteAsync(ctx);
             await snapshot.CommitAsync(ct);
         });
     }

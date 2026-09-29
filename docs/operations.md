@@ -60,17 +60,21 @@ Configure reverse-proxy body limits consistently with the API's 32 MiB request l
 
 ## Asynchronous exports
 
-Apply the `CardPaginationIndexes` and `AsyncExports` migrations before starting the
-updated production API and worker. Rebuild/redeploy **both** images. The existing
+Stop old workers, then apply the `CardPaginationIndexes`, `AsyncExports` and
+`XlsxExportFormats` migrations before starting the updated production API and worker.
+Rebuild/redeploy the API, worker and portal together. The format migration deletes
+old JSON file chunks, retains those jobs as expired history and requeues pending
+JSON jobs as XLSX. Downloaded files cannot be converted back by a migration rollback.
+The existing
 worker now runs independent Jira and export hosted services; without it, export
 requests remain visibly queued. It polls jobs every three seconds, reclaims
 interrupted jobs using PostgreSQL advisory locks, and removes expired file chunks.
 Do not run export generation inside the API process.
 
 The worker requires a writable temporary directory with enough space for the
-largest active export, plus PostgreSQL capacity for retained files and WAL.
+uncompressed worksheets plus the final workbook, and PostgreSQL capacity for retained files and WAL.
 One worker processes one export at a time; multiple replicas can process distinct
-jobs without sharing a disk. Each JSON batch holds at most 100 cards and each
+jobs without sharing a disk. Each XLSX batch holds at most 100 cards and each
 stored file chunk at most 1 MiB. PDF output is assembled on the worker from
 aggregates. Long exports hold a repeatable-read snapshot: monitor PostgreSQL
 vacuum/WAL pressure and temporary-disk usage. Hard crashes may leave temporary

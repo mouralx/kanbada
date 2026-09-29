@@ -38,7 +38,7 @@ synchronization logic without running HTTP endpoints. The public namespace remai
 - `Files/`, `Sharing/`, `Invitations/`: feature-specific transport and permission handling.
 - `Health/`: PostgreSQL readiness check.
 - `Exports/`: private durable export jobs, paged history, streaming downloads,
-  snapshot-consistent JSON generation and aggregate-based server PDF rendering.
+  snapshot-consistent XLSX generation and aggregate-based server PDF rendering.
 - `Jira/`: owner-authorized project settings, token protection, cron scheduling,
   Jira REST adapters and per-item synchronization. The worker polls PostgreSQL
   schedules and claims connections using session advisory locks.
@@ -69,8 +69,12 @@ worker processes them separately from Jira, using per-job advisory locks to
 prevent duplicate execution across replicas. Interrupted jobs restart after the
 connection releases its lock; three interrupted attempts produce an explicit failure.
 Generation holds a repeatable-read snapshot starting at processing time.
-JSON streams 100-card pages to a private temporary file and clears EF tracking
-between pages; workspace notifications stream separately. PDFsharp renders the
+XLSX streams 100-card pages into private temporary worksheet files and clears EF
+tracking between pages; workspace notifications stream separately. Open XML SDK
+builds the small workbook/style metadata; a create-mode ZIP streams the completed
+worksheet files without buffering whole entries in read/write package mode.
+Sheets split at Excel's row limit; long cells continue in an auxiliary sheet.
+PDFsharp renders the
 dashboard from metadata and complete SQL aggregates, not all card objects.
 Progress updates use another connection so they remain visible during generation.
 Completed files are stored in PostgreSQL chunks of at most 1 MiB, with completion

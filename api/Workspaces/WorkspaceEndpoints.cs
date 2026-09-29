@@ -77,7 +77,7 @@ public static class WorkspaceEndpoints
         {
             var user = Auth.User(ctx);
             await cards.Authorize(await db.WorkspaceId(id, user), user);
-            throw new ApiError(410, "Synchronous exports are no longer available. Use POST /api/workspaces/{id}/exports with kind workspace-json.");
+            throw new ApiError(410, "Synchronous exports are no longer available. Use POST /api/workspaces/{id}/exports with kind workspace-xlsx.");
         });
         // Granular reads mirror the state collections used by the portal. Writes use an atomic, versioned workspace transaction.
         api.MapGet("/workspaces/{id}/{collection}", async (string id, string collection, WorkspaceResolver db, WorkspaceStore store, HttpContext ctx) =>

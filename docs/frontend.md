@@ -61,7 +61,13 @@ functionality changes.
 
 Dashboard metrics are derived from the current workspace snapshot and project/bucket/swimlane filters. Completed statuses are configurable. Empty due dates are not overdue. Archived projects are omitted from active work views.
 
-`features/dashboard/dashboardPdf.ts` renders PDF exports with jsPDF and AutoTable and is loaded on demand. PDF generation stays in the browser; it does not upload dashboard content to an external service. The API also provides filtered metrics and a workspace JSON export.
+API-backed project/workspace exports use XLSX and dashboard reports use PDF.
+All run in the worker and are followed/downloaded in `features/exports/Exports.tsx`,
+without assembling file contents in browser memory. Only the browser-only demo
+uses the lazy-loaded `features/dashboard/dashboardPdf.ts` and
+`infrastructure/local/projectWorkbook.ts` renderers. Recovery-code downloads remain
+local TXT files, not background export jobs. The export toolbar groups its
+aligned action buttons and wraps them on narrow screens.
 
 ## Adding a feature
 

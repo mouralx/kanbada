@@ -91,7 +91,7 @@ export function Exports({ workspace }: { workspace: string }) {
     if (loading) return;
     setLoading(true);
     try {
-      const job = await requestExport(workspace, 'workspace-json', {}, locale);
+      const job = await requestExport(workspace, 'workspace-xlsx', {}, locale);
       setJobs((current) => [job, ...current]);
       setError('');
     } catch (error) {
@@ -108,21 +108,24 @@ export function Exports({ workspace }: { workspace: string }) {
     expired: 'Expired',
   };
   const kind = {
-    'project-json': 'Project JSON',
+    'project-xlsx': 'Project XLSX',
     'dashboard-pdf': 'Dashboard PDF',
-    'workspace-json': 'Workspace JSON',
+    'workspace-xlsx': 'Workspace XLSX',
   };
   return (
     <section className="exports-area" aria-label={t('Exports')}>
       <div className="exports-toolbar">
         <p>{t('Your private exports. Files are available for 7 days after completion.')}</p>
-        <button className="secondary" disabled={loading} onClick={() => void load()}>
-          <RefreshCw size={15} />
-          {t('Refresh')}
-        </button>
-        <button className="primary" disabled={loading} onClick={() => void queueWorkspace()}>
-          {t('Export workspace')}
-        </button>
+        <div className="exports-actions">
+          <button className="secondary" disabled={loading} onClick={() => void load()}>
+            <RefreshCw size={16} />
+            <span>{t('Refresh')}</span>
+          </button>
+          <button className="primary" disabled={loading} onClick={() => void queueWorkspace()}>
+            <Download size={16} />
+            <span>{t('Export workspace')}</span>
+          </button>
+        </div>
       </div>
       {error && (
         <p role="alert">

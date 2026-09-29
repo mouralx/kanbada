@@ -3,9 +3,16 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Validation;
 using Kanbada.Api;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using PdfSharp.Pdf.IO;
@@ -33,7 +40,7 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         return services.BuildServiceProvider(validateScopes: true);
     }
 
-    private static async Task<Guid> Queue(HttpClient client, string kind = "workspace-json", CardQuery? query = null, string locale = "en-US")
+    private static async Task<Guid> Queue(HttpClient client, string kind = "workspace-xlsx", CardQuery? query = null, string locale = "en-US")
     {
         using var response = await client.PostAsJsonAsync(Path, new ExportRequest(Guid.NewGuid(), kind, query, locale));
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
@@ -60,7 +67,7 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             var teammate = await db.Users.SingleAsync(u => u.Email == otherEmail);
             db.Members.Add(new MemberEntity { WorkspaceId = workspace, UserId = teammate.Id, Email = teammate.Email, Name = teammate.Name, Initials = "TM", Color = "#123456", Position = 1 });
             await db.SaveChangesAsync();
-            var request = new ExportRequest(Guid.NewGuid(), "workspace-json");
+            var request = new ExportRequest(Guid.NewGuid(), "workspace-xlsx");
             var responses = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => client.PostAsJsonAsync(Path, request)));
             foreach (var response in responses)
             {
@@ -77,7 +84,8 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             Assert.Equal(HttpStatusCode.Conflict, (await client.GetAsync($"{Path}/{request.Id}/download")).StatusCode);
             Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(Path, request with { Kind = "dashboard-pdf" })).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, request with { Id = Guid.NewGuid(), Kind = "invalid" })).StatusCode);
-            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, new ExportRequest(Guid.NewGuid(), "project-json"))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, new ExportRequest(Guid.NewGuid(), "project-xlsx"))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, new ExportRequest(Guid.NewGuid(), "workspace-json"))).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Path, new ExportRequest(Guid.NewGuid(), "dashboard-pdf", new CardQuery(Completion: "invalid")))).StatusCode);
             Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync(Path + "?after=invalid")).StatusCode);
             var otherPath = $"/api/workspaces/{workspace}/exports";
@@ -94,7 +102,7 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     [Fact]
-    public async Task JsonExportsIncludeAllPagesAssociationsAndVisibleNotificationsInChunks()
+    public async Task WorkbooksIncludeAllPagesAssociationsAndVisibleNotificationsInChunks()
     {
         var (client, _, _) = await CreateUser(fixture);
         using (client)
@@ -103,10 +111,12 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             using var scope = fixture.Factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
             var workspace = await scope.ServiceProvider.GetRequiredService<WorkspaceResolver>().WorkspaceId("studio", Guid.Parse(state["workspace"]!["ownerId"]!.ToString()));
-            await db.Cards.Where(c => c.WorkspaceId == workspace).ExecuteUpdateAsync(s => s.SetProperty(c => c.Description, new string('x', 12000)));
+            var cards = await db.Cards.Where(c => c.WorkspaceId == workspace).ToListAsync();
+            foreach (var card in cards) card.Description = Convert.ToBase64String(RandomNumberGenerator.GetBytes(12000));
+            await db.SaveChangesAsync();
             state = await Body(await client.GetAsync("/api/workspaces/studio"));
             var id = await Queue(client);
-            var project = await Queue(client, "project-json", new CardQuery(Project: "my-activities", Search: "not-present"));
+            var project = await Queue(client, "project-xlsx", new CardQuery(Project: "my-activities", Search: "not-present"));
             await using var worker = Worker();
             var processor = worker.GetRequiredService<ExportProcessor>();
             await processor.Run(id, default);
@@ -126,14 +136,27 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
                 Assert.Equal(bytes.LongLength, download.Content.Headers.ContentLength);
                 Assert.Equal("attachment", download.Content.Headers.ContentDisposition!.DispositionType);
                 Assert.True(download.Headers.CacheControl!.NoStore);
-                var data = JsonNode.Parse(bytes)!;
-                Assert.True(JsonNode.DeepEquals(state["tasks"], data["tasks"]));
+                Assert.Equal(ExportWorkbook.ContentType, download.Content.Headers.ContentType!.MediaType);
+                Assert.EndsWith(".xlsx", download.Content.Headers.ContentDisposition!.FileNameStar!);
+                var data = ReadWorkbook(bytes);
+                Assert.Equal(125, data["Cards"].Count);
+                for (var i = 0; i < 125; i++)
+                    foreach (var (key, value) in data["Cards"][i])
+                        Assert.Equal(state["tasks"]![i]![key]?.ToString() ?? "", value?.ToString() ?? "");
+                Assert.Equal(125, data["Checklist"].Count);
+                Assert.Equal(63, data["Assignees"].Count);
+                Assert.Equal("Needle", Assert.Single(data["Card labels"])["label"]!.ToString());
+                Assert.Equal(125, data["History"].Count);
                 if (jobId == id)
-                    foreach (var (key, value) in state) Assert.True(JsonNode.DeepEquals(value, data[key]), key);
+                {
+                    Assert.Equal(state["notifications"]!.AsArray().Count, data["Notifications"].Count);
+                    Assert.Equal("studio", Assert.Single(data["Workspace"])["id"]!.ToString());
+                    Assert.DoesNotContain("invitationToken", Assert.Single(data["Members"]).Select(p => p.Key));
+                }
                 else
                 {
-                    Assert.Equal(2, data.AsObject().Count);
-                    Assert.Equal("my-activities", data["project"]!["id"]!.ToString());
+                    Assert.False(data.ContainsKey("Workspace"));
+                    Assert.Equal("my-activities", Assert.Single(data["Projects"])["id"]!.ToString());
                 }
                 Assert.True(await db.ExportChunks.CountAsync(c => c.ExportId == jobId) > 1);
                 Assert.True(await db.ExportChunks.Where(c => c.ExportId == jobId).AllAsync(c => c.Bytes.Length <= 1024 * 1024));
@@ -148,7 +171,7 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
         using (client)
         {
             var state = await PaginationTests.SeedPages(client);
-            var id = await Queue(client, "project-json", new CardQuery(Project: "my-activities"));
+            var id = await Queue(client, "project-xlsx", new CardQuery(Project: "my-activities"));
             var interceptor = new PageObserver(async () =>
             {
                 using var scope = fixture.Factory.Services.CreateScope();
@@ -165,8 +188,8 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             Assert.Equal("completed", status["status"]!.ToString());
             Assert.Equal(2, interceptor.Pages);
             Assert.Equal(0, interceptor.MaxTrackedCardsBeforePage);
-            var data = await Body(await client.GetAsync($"{Path}/{id}/download"));
-            Assert.True(JsonNode.DeepEquals(state["tasks"], data["tasks"]));
+            var data = ReadWorkbook(await client.GetByteArrayAsync($"{Path}/{id}/download"));
+            Assert.Equal(state["tasks"]!.AsArray().Select(t => t!["title"]!.ToString()), data["Cards"].Select(t => t["title"]!.ToString()));
             Assert.Equal("Changed after snapshot", (await Body(await client.GetAsync("/api/workspaces/studio/cards/KB-PAGE-0124")))["title"]!.ToString());
         }
     }
@@ -221,7 +244,7 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             await Task.WhenAll(processor.Run(id, default), processor.Run(id, default));
             Assert.Equal(2, await db.Exports.Where(e => e.Id == id).Select(e => e.Attempts).SingleAsync());
             Assert.Equal("completed", (await Body(await client.GetAsync($"{Path}/{id}")))["status"]!.ToString());
-            Assert.Empty((await Body(await client.GetAsync($"{Path}/{id}/download")))["tasks"]!.AsArray());
+            Assert.Empty(ReadWorkbook(await client.GetByteArrayAsync($"{Path}/{id}/download"))["Cards"]);
             var failed = await Queue(client);
             await db.Exports.Where(e => e.Id == failed).ExecuteUpdateAsync(s => s.SetProperty(e => e.Status, "running").SetProperty(e => e.Attempts, 3));
             await processor.Run(failed, default);
@@ -282,6 +305,114 @@ public sealed class ExportTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    [Fact]
+    public async Task WorkbookSplitsSheetsAndLongTextWithoutCreatingFormulas()
+    {
+        using var workbook = new ExportWorkbook(maxRowsPerSheet: 3);
+        workbook.Table("Data", "id", "text", "done", "number");
+        var text = new string('x', 32766) + "\U0001F600" + "ação\r\n" + new string('y', 100);
+        workbook.Row("Data", JsonValue.Create("first"), JsonValue.Create("=HYPERLINK(\"https://example.test\")"), JsonValue.Create(true), JsonValue.Create(12));
+        workbook.Row("Data", JsonValue.Create("second"), JsonValue.Create(text), JsonValue.Create(false), JsonValue.Create(13));
+        workbook.Row("Data", JsonValue.Create("third"), JsonValue.Create("literal _x0000_ and \0"), null, null);
+        using var stream = new WriteOnlyStream();
+        await workbook.Save(stream, default);
+        var data = ReadWorkbook(stream.ToArray());
+        Assert.Equal(2, data["Data"].Count);
+        Assert.Single(data["Data (2)"]);
+        Assert.Equal(text, string.Concat(data["Long text"].Select(row => row["text"]!.ToString())));
+        Assert.Equal("literal _x0000_ and \0", data["Data (2)"][0]["text"]!.ToString());
+        Assert.True(data["Data"][0]["done"]!.GetValue<bool>());
+        Assert.Equal(12, data["Data"][0]["number"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task FormatMigrationExpiresJsonFilesAndRequeuesPendingWorkbooks()
+    {
+        var (client, _, _) = await CreateUser(fixture);
+        using (client)
+        {
+            var completed = await Queue(client);
+            var pending = await Queue(client, "project-xlsx", new CardQuery(Project: "my-activities"));
+            using var scope = fixture.Factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
+            await db.Exports.Where(e => e.Id == completed).ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.Kind, "workspace-json").SetProperty(e => e.Status, "completed").SetProperty(e => e.Bytes, 2));
+            await db.Exports.Where(e => e.Id == pending).ExecuteUpdateAsync(s => s
+                .SetProperty(e => e.Kind, "project-json").SetProperty(e => e.Status, "running").SetProperty(e => e.Attempts, 1));
+            db.ExportChunks.Add(new ExportChunkEntity { ExportId = completed, Position = 0, Bytes = Encoding.UTF8.GetBytes("{}") });
+            await db.SaveChangesAsync();
+            Assert.Equal(HttpStatusCode.Gone, (await client.GetAsync($"{Path}/{completed}/download")).StatusCode);
+            foreach (var sql in new FormatMigration().Commands()) await db.Database.ExecuteSqlRawAsync(sql);
+            Assert.False(await db.ExportChunks.AnyAsync(c => c.ExportId == completed));
+            var old = await db.Exports.AsNoTracking().SingleAsync(e => e.Id == completed);
+            Assert.Equal("workspace-xlsx", old.Kind);
+            Assert.Equal("expired", old.Status);
+            var queued = await db.Exports.AsNoTracking().SingleAsync(e => e.Id == pending);
+            Assert.Equal("project-xlsx", queued.Kind);
+            Assert.Equal("queued", queued.Status);
+            Assert.Equal(0, queued.Attempts);
+            await using var worker = Worker();
+            await worker.GetRequiredService<ExportProcessor>().Run(pending, default);
+            Assert.Empty(ReadWorkbook(await client.GetByteArrayAsync($"{Path}/{pending}/download"))["Cards"]);
+        }
+    }
+
+    private sealed class FormatMigration : Kanbada.Api.Persistence.Migrations.XlsxExportFormats
+    {
+        public IEnumerable<string> Commands()
+        {
+            var builder = new MigrationBuilder("Npgsql.EntityFrameworkCore.PostgreSQL");
+            Up(builder);
+            return builder.Operations.Cast<SqlOperation>().Select(operation => operation.Sql);
+        }
+    }
+
+    private sealed class WriteOnlyStream : Stream
+    {
+        private readonly MemoryStream buffer = new();
+        public byte[] ToArray() => buffer.ToArray();
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => buffer.Flush();
+        public override void Write(byte[] bytes, int offset, int count) => buffer.Write(bytes, offset, count);
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default) => buffer.WriteAsync(bytes, cancellationToken);
+        public override int Read(byte[] bytes, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        protected override void Dispose(bool disposing) { if (disposing) buffer.Dispose(); base.Dispose(disposing); }
+    }
+
+    private static Dictionary<string, List<JsonObject>> ReadWorkbook(byte[] bytes)
+    {
+        using var document = SpreadsheetDocument.Open(new MemoryStream(bytes), false);
+        Assert.Empty(new OpenXmlValidator().Validate(document).Take(10).Select(e => e.Description + " " + e.Path?.XPath));
+        var result = new Dictionary<string, List<JsonObject>>();
+        foreach (var sheet in document.WorkbookPart!.Workbook.Sheets!.Elements<Sheet>())
+        {
+            var part = (WorksheetPart)document.WorkbookPart.GetPartById(sheet.Id!);
+            Assert.Empty(part.Worksheet.Descendants<CellFormula>());
+            var rows = part.Worksheet.GetFirstChild<SheetData>()!.Elements<Row>().ToArray();
+            var headers = rows[0].Elements<Cell>().Select(c => c.InnerText).ToArray();
+            result[sheet.Name!] = rows.Skip(1).Select(row =>
+            {
+                var record = new JsonObject();
+                var cells = row.Elements<Cell>().ToArray();
+                for (var i = 0; i < headers.Length; i++)
+                {
+                    var cell = cells[i];
+                    record[headers[i]] = cell.DataType?.Value == CellValues.Boolean ? JsonValue.Create(cell.CellValue!.Text == "1")
+                        : cell.DataType?.Value == CellValues.Number ? JsonNode.Parse(cell.CellValue!.Text)
+                        : JsonValue.Create(Regex.Replace(cell.InnerText, "_x([0-9A-Fa-f]{4})_", match => ((char)Convert.ToInt32(match.Groups[1].Value, 16)).ToString()));
+                }
+                return record;
+            }).ToList();
+        }
+        return result;
     }
 
     private sealed class PageObserver(Func<Task> beforeSecondPage) : DbCommandInterceptor

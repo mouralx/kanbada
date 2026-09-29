@@ -1,6 +1,7 @@
 import { chromium, expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { enrollApiAccount } from './authenticator-test-helpers.mjs';
+import { readWorkbook } from './workbook-test-helpers.mjs';
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
@@ -141,35 +142,52 @@ try {
   await page.getByRole('button', { name: 'My activities', exact: true }).click();
   await page.getByRole('button', { name: 'Project options', exact: true }).click();
   await page.getByRole('button', { name: 'Export project', exact: true }).click();
-  const projectJob = page.locator('.export-job').filter({ hasText: 'Project JSON' });
+  const projectJob = page.locator('.export-job').filter({ hasText: 'Project XLSX' });
   await expect(projectJob.getByText('Ready to download', { exact: true })).toBeVisible({
     timeout: 60000,
   });
   const exported = page.waitForEvent('download');
   await projectJob.getByRole('link', { name: 'Download', exact: true }).click();
-  const stream = await (await exported).createReadStream();
-  const chunks = [];
-  for await (const chunk of stream) chunks.push(chunk);
-  const json = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  assert.equal(json.tasks.length, 125);
-  assert.ok(json.tasks.some((task) => task.id === 'KB-BROWSE-0099'));
+  const workbook = await readWorkbook(page, await exported);
+  assert.equal(workbook.Cards.length, 125);
+  assert.ok(workbook.Cards.some((task) => task.id === 'KB-BROWSE-0099'));
+  assert.equal(workbook.Assignees.length, 125);
   await page.removeAllListeners('response', { behavior: 'wait' });
   await page.reload();
   await page.getByRole('button', { name: 'Exports', exact: true }).click();
   await expect(page.locator('.export-job')).toHaveCount(2);
+  const actions = page.locator('.exports-actions button');
+  const sizes = await actions.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const rect = button.getBoundingClientRect();
+      const css = getComputedStyle(button);
+      return { height: rect.height, top: rect.top, display: css.display, gap: css.gap };
+    }),
+  );
+  assert.equal(sizes[0].height, sizes[1].height);
+  assert.equal(sizes[0].top, sizes[1].top);
+  assert.equal(sizes[0].display, 'flex');
+  assert.equal(sizes[0].gap, '8px');
+  await page.setViewportSize({ width: 375, height: 812 });
+  assert.ok(
+    await actions.evaluateAll((buttons) =>
+      buttons.every((button) => {
+        const rect = button.getBoundingClientRect();
+        return rect.width > 0 && rect.height >= 38 && rect.right <= window.innerWidth;
+      }),
+    ),
+  );
+  await page.setViewportSize({ width: 1500, height: 1050 });
   await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
-  const workspaceJob = page.locator('.export-job').filter({ hasText: 'Workspace JSON' });
+  const workspaceJob = page.locator('.export-job').filter({ hasText: 'Workspace XLSX' });
   await expect(workspaceJob.getByText('Ready to download', { exact: true })).toBeVisible({
     timeout: 60000,
   });
   const workspaceDownload = page.waitForEvent('download');
   await workspaceJob.getByRole('link', { name: 'Download', exact: true }).click();
-  const workspaceChunks = [];
-  for await (const chunk of await (await workspaceDownload).createReadStream())
-    workspaceChunks.push(chunk);
-  const workspaceJson = JSON.parse(Buffer.concat(workspaceChunks).toString('utf8'));
-  assert.equal(workspaceJson.tasks.length, 125);
-  assert.equal(workspaceJson.workspace.id, 'studio');
+  const workspaceWorkbook = await readWorkbook(page, await workspaceDownload);
+  assert.equal(workspaceWorkbook.Cards.length, 125);
+  assert.equal(workspaceWorkbook.Workspace[0].id, 'studio');
 
   await page.goto('http://localhost:4173/?workspace=studio&card=KB-BROWSE-0099');
   await expect(page.getByLabel('Task title')).toHaveValue('Paged card 99');
@@ -209,6 +227,36 @@ try {
       throw new Error('Metadata saves lost the currently open card');
   });
   assert.deepEqual(errors, []);
+  const localDownload = page.waitForEvent('download');
+  await page.evaluate(async () => {
+    const { exportProjectWorkbook } = await import('/src/infrastructure/local/projectWorkbook.ts');
+    await exportProjectWorkbook(
+      { id: 'local-demo', name: 'Local demo', description: '', color: '#123456' },
+      [
+        {
+          id: 'KB-LOCAL',
+          project: 'local-demo',
+          title: '=1+1',
+          description: 'Ação ' + 'x'.repeat(33000),
+          status: 'Backlog',
+          priority: 'High',
+          due: '',
+          labels: ['Label'],
+          assignees: ['Alex'],
+          comments: ['A comment'],
+          checklist: [{ text: 'Step', done: true }],
+          attachments: [],
+        },
+      ],
+    );
+  });
+  const localWorkbook = await readWorkbook(page, await localDownload);
+  assert.equal(localWorkbook.Cards[0].title, '=1+1');
+  assert.equal(localWorkbook.Checklist[0].done, true);
+  assert.equal(
+    localWorkbook['Long text'].map((row) => row.text).join(''),
+    'Ação ' + 'x'.repeat(33000),
+  );
   console.log(
     'PASS: bounded bootstrap, scrolling, remote search, list paging, full metrics/exports, direct links, saves and notification paging',
   );

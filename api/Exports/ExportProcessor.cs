@@ -19,6 +19,8 @@ public sealed class ExportProcessor(IServiceScopeFactory scopes, NpgsqlDataSourc
             var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
             var job = await db.Exports.AsNoTracking().SingleOrDefaultAsync(e => e.Id == id, ct);
             if (job is null || job.Status is not ("queued" or "running")) return;
+            if (job.Kind is not ("project-xlsx" or "workspace-xlsx" or "dashboard-pdf"))
+                throw new ApiError(410, "This export format is no longer available. Request a new export.");
             if (job.Attempts >= 3)
             {
                 await Fail(id, "Export interrupted repeatedly. Request a new export.", ct);
@@ -60,37 +62,17 @@ public sealed class ExportProcessor(IServiceScopeFactory scopes, NpgsqlDataSourc
                 }
                 else
                 {
-                    using var writer = new Utf8JsonWriter(file);
-                    writer.WriteStartObject();
-                    if (job.Kind == "project-json")
+                    using var workbook = new ExportWorkbook();
+                    workbook.Metadata(metadata.State, job.Kind == "project-xlsx" ? query.Project : null);
+                    if (job.Kind == "workspace-xlsx")
                     {
-                        writer.WritePropertyName("project");
-                        WorkspaceJson.Items(metadata.State, "projects").Single(p => WorkspaceJson.Text(p, "id") == query.Project)!.WriteTo(writer);
-                    }
-                    else
-                    {
-                        foreach (var (key, value) in metadata.State.Where(p => p.Key is not ("tasks" or "notifications" or "notificationCount")))
-                        {
-                            writer.WritePropertyName(key);
-                            if (value is null) writer.WriteNullValue();
-                            else value.WriteTo(writer);
-                        }
-                        writer.WriteStartArray("notifications");
                         await foreach (var notice in db.Notifications.AsNoTracking()
                             .Where(n => n.WorkspaceId == job.WorkspaceId && (n.RecipientId == null || n.RecipientId == job.UserId))
                             .OrderBy(n => n.Position).ThenBy(n => n.Id).AsAsyncEnumerable().WithCancellation(ct))
                         {
-                            writer.WriteStartObject();
-                            writer.WriteString("id", notice.Id);
-                            writer.WriteString("message", notice.Message);
-                            writer.WriteString("at", notice.At);
-                            if (notice.CardId is not null) writer.WriteString("cardId", notice.CardId);
-                            writer.WriteEndObject();
-                            if (writer.BytesPending >= 65536) await writer.FlushAsync(ct);
+                            workbook.Row("Notifications", JsonValue.Create(notice.Id), JsonValue.Create(notice.Message), JsonValue.Create(notice.At), JsonValue.Create(notice.CardId));
                         }
-                        writer.WriteEndArray();
                     }
-                    writer.WriteStartArray("tasks");
                     string? cursor = null;
                     var processed = 0;
                     do
@@ -100,16 +82,13 @@ public sealed class ExportProcessor(IServiceScopeFactory scopes, NpgsqlDataSourc
                         var page = JsonSerializer.SerializeToNode(await cards.Page(job.WorkspaceId, job.UserId, query, 100, cursor), JsonSerializerOptions.Web)!;
                         foreach (var card in page["items"]!.AsArray())
                         {
-                            card!.WriteTo(writer);
+                            workbook.Card(card!);
                             processed++;
                         }
-                        await writer.FlushAsync(ct);
                         await Progress(id, processed, page["total"]!.GetValue<int>(), metadata.Version, ct);
                         cursor = page["nextCursor"]?.GetValue<string>();
                     } while (cursor is not null);
-                    writer.WriteEndArray();
-                    writer.WriteEndObject();
-                    await writer.FlushAsync(ct);
+                    await workbook.Save(file, ct);
                 }
                 await snapshot.CommitAsync(ct);
             }

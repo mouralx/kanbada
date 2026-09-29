@@ -35,16 +35,16 @@ public sealed class ExportJobs(KanbadaDbContext db, CardQueries cards, TimeProvi
     public async Task<ExportJobEntity> Create(Guid workspace, Guid user, ExportRequest request, CancellationToken ct)
     {
         await cards.Authorize(workspace, user);
-        if (request.Id == Guid.Empty || request.Kind is not ("project-json" or "dashboard-pdf" or "workspace-json")
+        if (request.Id == Guid.Empty || request.Kind is not ("project-xlsx" or "dashboard-pdf" or "workspace-xlsx")
             || request.Locale is not ("en-US" or "pt-PT"))
             throw new ApiError(400, "Invalid export request.");
         var query = request.Query ?? new CardQuery();
-        if (request.Kind == "project-json")
+        if (request.Kind == "project-xlsx")
         {
             if (string.IsNullOrEmpty(query.Project)) throw new ApiError(400, "Choose a project to export.");
             query = new CardQuery(Project: query.Project);
         }
-        else if (request.Kind == "workspace-json") query = new CardQuery();
+        else if (request.Kind == "workspace-xlsx") query = new CardQuery();
         else query = query with { Today = query.Today ?? DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime) };
         if (query.Completion is not (null or "Open" or "Completed" or "Overdue")
             || query.Priority is not (null or "Low" or "Medium" or "High") || query.From > query.To)

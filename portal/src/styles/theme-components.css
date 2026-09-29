@@ -2090,6 +2090,19 @@
         border-left: 1px solid var(--ui-border)
     }
 }
+:is(:root, [data-platform-theme])[data-platform-theme] .exports-area .secondary {
+    border-radius: calc(6px * var(--ui-radius-scale));
+    background: var(--ui-field, var(--ui-surface));
+    font-size: calc(12px * var(--ui-font-scale));
+    --ui-text: var(--ui-panel-text)
+}
+:is(:root, [data-platform-theme])[data-platform-theme] .exports-area .secondary:hover:not(:disabled) {
+    background: var(--ui-hover, var(--ui-field));
+    --ui-text: var(--ui-panel-text)
+}
+:is(:root, [data-platform-theme])[data-platform-theme] .exports-actions button {
+    font-size: calc(12px * var(--ui-font-scale))
+}
 :is(:root, [data-platform-theme])[data-platform-theme] .export-job {
     border: 1px solid var(--border, var(--ui-border));
     border-radius: calc(12px * var(--ui-radius-scale))

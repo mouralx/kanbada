@@ -82,7 +82,7 @@ link exists, rather than an empty successful response.
 
 `npm --prefix portal run test:pagination` uses 125 cards to verify empty-card
 bootstrap, 40-card board batches, scroll-triggered downloads, remote search,
-list paging, complete dashboard totals, queued JSON/PDF exports, direct links to unloaded
+list paging, complete dashboard totals, queued XLSX/PDF exports, direct links to unloaded
 cards, edits preserving other cards, and paged notification clearing. Run it
 separately from the main browser suite to avoid the shared development server's
 20-authentication-requests/minute limit (wait a minute between suites).
@@ -91,10 +91,13 @@ Export browser checks require the **worker** alongside the API and portal.
 They follow jobs in Exports, download completed files, check history survives
 reloads, and ensure API-mode exports neither fetch all card pages nor load the
 browser PDF renderer. `ExportTests` uses small multi-page datasets to cover
-private ownership, concurrent idempotent submissions, complete JSON/chunks,
+private ownership, concurrent idempotent submissions, complete XLSX/chunks,
 snapshot consistency during edits, bounded EF tracking, filtered Portuguese PDFs,
 interrupted-job recovery, advisory locks, failure reporting, history pagination
-and seven-day expiry/cleanup. Run it with
+and seven-day expiry/cleanup. XLSX files are validated with the Open XML validator;
+small limits exercise sheet splitting, long text and safe formula-like strings
+without generating million-row fixtures. Browser coverage also checks local-demo
+workbooks and desktop/mobile export-action alignment. Run it with
 `dotnet test api/tests/Kanbada.Api.Tests --filter FullyQualifiedName~ExportTests`.
 To run the API suite without the optional million-card regression, use
 `dotnet test api/tests/Kanbada.Api.Tests --filter 'FullyQualifiedName!~MillionCard'`.

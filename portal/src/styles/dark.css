@@ -1360,6 +1360,12 @@
     border-color: #686d78;
     background: #1b1d21
 }
+:root[data-theme="dark"] .exports-area .secondary {
+    background: var(--ui-field, #232529)
+}
+:root[data-theme="dark"] .exports-area .secondary:hover:not(:disabled) {
+    background: var(--ui-hover, #1b1d21)
+}
 :root[data-theme="dark"] .export-job {
     border: 1px solid var(--border, #383b42)
 }

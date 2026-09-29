@@ -417,11 +417,11 @@ export const helpArticles: HelpArticle[] = [
     category: 'Dashboards & exports',
     en: [
       'How do I export project data?',
-      'Open a project, select the three-dot Project options menu, and choose Export project. Follow the background job in Exports and download the JSON when ready. It includes the entire project and its cards, including cards you have not loaded. Attachments contain metadata, not file contents. Exports also offers Export workspace for a complete workspace JSON snapshot. Files are private to the requester and expire 7 days after completion; request a new export after expiry or failure.',
+      'Open a project, select the three-dot Project options menu, and choose Export project. Follow the background job in Exports and download the XLSX workbook when ready. It includes all project cards, even those not loaded, with separate sheets for labels, assignees, comments, checklists, history and attachment metadata (not file contents). Export workspace adds workspace metadata and your visible notifications, but not invitation tokens. Files are private and expire 7 days after completion. Large sheets split automatically; cell text over Excel’s limit continues in the Long text sheet. Dashboard reports use PDF; security recovery codes remain TXT.',
     ],
     pt: [
       'Como exporto os dados de um projeto?',
-      'Abra um projeto, selecione o menu de três pontos Opções do projeto e escolha Exportar projeto. Acompanhe o processamento em segundo plano em Exportações e transfira o JSON quando estiver pronto. Inclui todo o projeto e os cartões, mesmo os que ainda não carregou. Os anexos contêm metadados, não o conteúdo dos ficheiros. Exportações também permite Exportar espaço de trabalho para obter um instantâneo JSON completo. Os ficheiros são privados e expiram 7 dias após a conclusão; solicite uma nova exportação se expirarem ou falharem.',
+      'Abra um projeto, selecione o menu de três pontos Opções do projeto e escolha Exportar projeto. Acompanhe o processamento em Exportações e transfira o ficheiro XLSX quando estiver pronto. Inclui todos os cartões, mesmo os não carregados, com folhas para etiquetas, responsáveis, comentários, listas de verificação, histórico e metadados dos anexos (não o conteúdo). Exportar espaço de trabalho acrescenta os metadados e as notificações visíveis, mas não os códigos de convite. Os ficheiros são privados e expiram após 7 dias. As folhas grandes são divididas; texto acima do limite do Excel continua na folha Long text. Os painéis usam PDF e os códigos de recuperação mantêm o formato TXT.',
     ],
   },
   {

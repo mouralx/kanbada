@@ -5603,6 +5603,39 @@ button:disabled {
 }
 .exports-toolbar p {
   flex: 1 1 300px;
+  margin: 0;
+  color: var(--ui-muted, var(--muted));
+  line-height: 1.6;
+}
+.exports-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.exports-area .secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border: 1px solid var(--ui-border, var(--line));
+  border-radius: 6px;
+  background: var(--ui-field, #fff);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.exports-area .secondary:hover:not(:disabled) {
+  background: var(--ui-hover, #e8edf3);
+}
+.exports-actions button {
+  min-height: 38px;
+  font-size: 12px;
+}
+.exports-area button:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 .exports-list {
   display: grid;
@@ -5635,6 +5668,12 @@ button:disabled {
   text-decoration: none;
 }
 @media (max-width: 600px) {
+  .exports-actions {
+    width: 100%;
+  }
+  .exports-actions button {
+    flex: 1 1 auto;
+  }
   .export-job {
     align-items: flex-start;
     flex-direction: column;

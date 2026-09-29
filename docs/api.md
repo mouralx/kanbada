@@ -29,7 +29,7 @@ Every operation includes a request URL example, parameter examples, documented s
 
 ## Transport conventions
 
-All feature routes begin with `/api`. Requests and responses use JSON except multipart file uploads, binary file downloads, and workspace JSON downloads. Authentication uses cookies; there is no bearer token API. All mutations require `X-Kanbada-Request: 1`. A supplied Origin must match the portal origin or API origin. The application intentionally does not enable cross-origin credentialed CORS.
+All feature routes begin with `/api`. Requests and responses use JSON except multipart file uploads and binary downloads (including XLSX/PDF exports). Authentication uses cookies; there is no bearer token API. All mutations require `X-Kanbada-Request: 1`. A supplied Origin must match the portal origin or API origin. The application intentionally does not enable cross-origin credentialed CORS.
 
 An authenticated caller without access normally receives 404 for workspace/file lookup to avoid disclosing inaccessible resources. Ownership violations return 403. Invalid domain input returns 400. A missing workspace version returns 428; stale saves return 409. Rate-limited authentication requests return 429. Errors are centralized Problem Details with a trace ID; unexpected exception details are logged server-side.
 
@@ -164,14 +164,27 @@ Changing filters, view, workspace or version discards old pages and cancels
 pending requests. Closing/reopening a card uses its independent detail read.
 
 Dashboard totals/charts, sidebar counts, project progress and definition usage
-come from database aggregates. Project JSON, workspace JSON and dashboard PDF
+come from database aggregates. Project XLSX, workspace XLSX and dashboard PDF
 exports run asynchronously in the separate worker, never in the browser or an
-HTTP request. Submit `{ "id": "<new UUID>", "kind": "project-json",
+HTTP request. Submit `{ "id": "<new UUID>", "kind": "project-xlsx",
 "query": { "project": "my-activities" }, "locale": "en-US" }`; supported kinds
-are `project-json`, `workspace-json` and `dashboard-pdf`. A repeated UUID with the
+are `project-xlsx`, `workspace-xlsx` and `dashboard-pdf`. A repeated UUID with the
 same parameters returns the existing job; conflicting reuse returns 409.
-Project JSON includes every card in that project, regardless of board filters.
-Workspace JSON includes all cards and only notifications visible to the requester.
+Project XLSX includes every card in that project, regardless of board filters.
+Workspace XLSX includes all cards and only notifications visible to the requester.
+Invitation tokens are deliberately excluded; these are spreadsheets, not restorable backups.
+Workbooks contain Cards, Projects, Card labels, Assignees, Comments, Checklist,
+History, History changes and Attachments sheets. Workspace exports also include
+Workspace, Snapshot, Members, Statuses, Buckets, Labels, Swimlanes, Activity and
+Notifications. Attachment bytes are not embedded. Sheet names and column keys
+are stable English identifiers; user content remains unchanged.
+Each sheet includes a header row and splits automatically at Excel's 1,048,576-row
+limit. Text exceeding 32,767 UTF-16 units is preserved in ordered `Long text` rows,
+identified by sheet/row/column/part; the original cell contains the first part.
+Booleans and numbers have native cell types; user strings are never formulas.
+Old JSON export kinds now return 400. Existing JSON files expire during the
+`XlsxExportFormats` migration, and pending JSON jobs are requeued as XLSX.
+Security recovery-code downloads remain TXT and are never added to export history.
 Dashboard PDF uses the same `CardQuery` filters as its dashboard, including
 the caller-local `today`, and complete SQL aggregates. Locales are `en-US` and `pt-PT`.
 

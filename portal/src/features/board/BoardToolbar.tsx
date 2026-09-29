@@ -290,7 +290,7 @@ export function BoardToolbar({
                       if (apiEnabled) {
                         await requestExport(
                           data.workspace.id,
-                          'project-json',
+                          'project-xlsx',
                           { project: project.id },
                           locale,
                         );
@@ -299,18 +299,9 @@ export function BoardToolbar({
                         onExports();
                         return;
                       }
-                      const blob = new Blob(
-                        [JSON.stringify({ project, tasks: projectTasks }, null, 2)],
-                        {
-                          type: 'application/json',
-                        },
-                      );
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = project.id + '.json';
-                      a.click();
-                      URL.revokeObjectURL(url);
+                      const { exportProjectWorkbook } =
+                        await import('../../infrastructure/local/projectWorkbook');
+                      await exportProjectWorkbook(project, projectTasks);
                       setMenu(false);
                       setToast('Project exported');
                     } catch (error) {

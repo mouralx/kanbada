@@ -1,7 +1,7 @@
 import { apiRequest } from './apiClient';
 import { cardPath, type CardQuery } from './cards';
 
-export type ExportKind = 'project-json' | 'dashboard-pdf' | 'workspace-json';
+export type ExportKind = 'project-xlsx' | 'dashboard-pdf' | 'workspace-xlsx';
 export type ExportJob = {
   id: string;
   kind: ExportKind;
