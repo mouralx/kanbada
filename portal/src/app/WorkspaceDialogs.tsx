@@ -17,6 +17,12 @@ import { apiEnabled } from '../infrastructure/apiClient';
 import { PlatformSettings, PlatformSettingsButton } from '../features/workspaces/PlatformSettings';
 import { sumGroups, type CardSummary } from '../infrastructure/cards';
 
+const GitHubSettings = React.lazy(() =>
+  import('../features/projects/GitHubSettings').then((module) => ({
+    default: module.GitHubSettings,
+  })),
+);
+
 type WorkspaceDialogsProps = {
   modal: string | null;
   setModal: React.Dispatch<React.SetStateAction<string | null>>;
@@ -73,7 +79,7 @@ export function WorkspaceDialogs({
           role="dialog"
           aria-modal="true"
           aria-label={t(modal)}
-          className={`modal ${modal === 'Profile' ? 'profile-modal' : modal === 'Share card' ? 'share-modal' : modal === 'Jira synchronization' ? 'jira-modal' : modal === 'Platform appearance' ? 'jira-modal branding-modal' : ''}`}
+          className={`modal ${modal === 'Profile' ? 'profile-modal' : modal === 'Share card' ? 'share-modal' : modal === 'Jira synchronization' || modal === 'GitHub synchronization' ? 'jira-modal' : modal === 'Platform appearance' ? 'jira-modal branding-modal' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="modal-heading">
@@ -144,6 +150,18 @@ export function WorkspaceDialogs({
               statuses={data.statuses}
               members={data.members}
             />
+          ) : modal === 'GitHub synchronization' && apiEnabled && data.workspace.canManage ? (
+            <React.Suspense
+              fallback={<p role="status">{t('Loading synchronization settings...')}</p>}
+            >
+              <GitHubSettings
+                key={`${data.workspace.id}-${project.id}`}
+                workspaceId={data.workspace.id}
+                project={project}
+                statuses={data.statuses}
+                members={data.members}
+              />
+            </React.Suspense>
           ) : modal === 'Platform appearance' && apiEnabled ? (
             <PlatformSettings />
           ) : modal === 'Notifications' ? (

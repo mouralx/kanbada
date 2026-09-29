@@ -9,7 +9,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import './jira-settings.css';
-import { JiraServerAccess } from './JiraServerAccess';
+import { ConnectorServerAccess } from './ConnectorServerAccess';
 import { JiraAssigneeMappings, JiraStatusMappings } from './JiraMappings';
 import type { Definition, Member, Project } from '../../domain/models';
 import {
@@ -230,7 +230,7 @@ export function JiraSettings({
             onChange={(event) => change('baseUrl', event.target.value)}
           />
         </label>
-        <JiraServerAccess baseUrl={input.baseUrl} />
+        <ConnectorServerAccess baseUrl={input.baseUrl} provider="Jira" />
         {input.edition === 'cloud' && (
           <label>
             {t('Jira account email')}

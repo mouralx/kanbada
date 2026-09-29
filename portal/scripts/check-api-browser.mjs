@@ -47,7 +47,7 @@ try {
   await page.getByLabel('Search help').fill('nothing-matches-here');
   await expect(page.getByText('No matching answers', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Show all topics', exact: true }).click();
-  await expect(page.locator('.help-articles details')).toHaveCount(56);
+  await expect(page.locator('.help-articles details')).toHaveCount(59);
   for (const [query, title] of [
     ['SVG', 'Which logo formats can I upload, including SVG?'],
     ['recovery codes', 'What if I lose my authenticator or need new recovery codes?'],

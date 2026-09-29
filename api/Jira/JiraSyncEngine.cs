@@ -129,10 +129,7 @@ public sealed class JiraSyncEngine(KanbadaDbContext db, NpgsqlDataSource source,
 
     private async Task<JiraSnapshot> Snapshot(CardEntity card, CancellationToken ct)
     {
-        var labels = await (from l in db.CardLabels
-                            join definition in db.Labels on new { l.WorkspaceId, Id = l.LabelId } equals new { definition.WorkspaceId, definition.Id }
-                            where l.WorkspaceId == card.WorkspaceId && l.CardId == card.Id
-                            select definition.Name).ToListAsync(ct);
+        var labels = await CardSynchronization.Labels(db, card, ct);
         return JiraSnapshot.FromCard(card, labels);
     }
 
@@ -192,7 +189,7 @@ public sealed class JiraSyncEngine(KanbadaDbContext db, NpgsqlDataSource source,
         link.JiraIssueId = created.Id;
         link.JiraKey = created.Key;
         link.CreationPending = false;
-        await JiraCardPolicy.InvalidateWorkspace(db, c.WorkspaceId, ct);
+        await ExternalCardPolicy.InvalidateWorkspace(db, c.WorkspaceId, ct);
         await db.SaveChangesAsync(ct);
         var issue = await jira.Get(c, created.Id, ct);
         await jira.Transition(c, issue, snapshot.Status, ct);
@@ -295,35 +292,9 @@ public sealed class JiraSyncEngine(KanbadaDbContext db, NpgsqlDataSource source,
         card.StatusId = snapshot.Status;
         card.Priority = snapshot.Priority;
         card.Due = snapshot.Due;
-        var definitions = await db.Labels.Where(l => l.WorkspaceId == card.WorkspaceId).ToListAsync(ct);
-        var existing = await db.CardLabels.Where(l => l.WorkspaceId == card.WorkspaceId && l.CardId == card.Id).ToListAsync(ct);
-        var wanted = new HashSet<string>();
-        foreach (var name in snapshot.Labels.Select(name => name.Trim()))
-        {
-            var label = definitions.SingleOrDefault(l => string.Equals(l.Name.Trim(), name, StringComparison.OrdinalIgnoreCase));
-            if (label is null)
-            {
-                label = new LabelEntity { WorkspaceId = card.WorkspaceId, Id = "jira-" + Guid.NewGuid().ToString("N"), Name = name, Color = "#879eb9", Position = definitions.Count };
-                definitions.Add(label);
-                db.Add(label);
-            }
-            if (wanted.Add(label.Id) && !existing.Any(l => l.LabelId == label.Id))
-                db.Add(new CardLabelEntity { WorkspaceId = card.WorkspaceId, CardId = card.Id, LabelId = label.Id, Position = wanted.Count - 1 });
-        }
-        db.RemoveRange(existing.Where(l => !wanted.Contains(l.LabelId)));
+        await CardSynchronization.ApplyLabels(db, card, snapshot.Labels, "jira", ct);
     }
 
-    private async Task SaveWorkspace(WorkspaceEntity workspace, CardEntity card, string change, CancellationToken ct)
-    {
-        await AssignmentNotifications.CreateForNewAssignments(db, workspace.Id, ct);
-        workspace.Version++;
-        workspace.UpdatedAt = DateTimeOffset.UtcNow;
-        // Existing history is newest-first; shift it without changing its contents.
-        await db.HistoryEntries.Where(h => h.WorkspaceId == card.WorkspaceId && h.CardId == card.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(h => h.Position, h => h.Position + 1), ct);
-        var historyId = Guid.NewGuid().ToString("N");
-        db.Add(new HistoryEntryEntity { WorkspaceId = card.WorkspaceId, CardId = card.Id, Id = historyId, Actor = "Jira synchronization", At = DateTimeOffset.UtcNow, Position = 0 });
-        db.Add(new HistoryChangeEntity { WorkspaceId = card.WorkspaceId, CardId = card.Id, HistoryId = historyId, Position = 0, Text = change });
-        await db.SaveChangesAsync(ct);
-    }
+    private Task SaveWorkspace(WorkspaceEntity workspace, CardEntity card, string change, CancellationToken ct) =>
+        CardSynchronization.SaveWorkspace(db, workspace, card, "Jira synchronization", change, ct);
 }

@@ -1,6 +1,7 @@
 # Project synchronization with Jira
 
-Each Kanbada project can have one Jira connection. The workspace owner opens
+Each Kanbada project can have one connector: Jira or [GitHub Projects](github.md),
+including while paused. The workspace owner opens
 **Project options → Jira synchronization** to configure it. Other members cannot
 read or change the connection, run jobs, or access its credentials. Local/demo
 mode does not expose this feature.

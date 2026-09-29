@@ -287,7 +287,7 @@ try {
   await lockedRow.click();
   linkState = 'error';
   await page.reload();
-  await expect(cardDialog.getByRole('alert')).toContainText('Could not load the Jira card link.');
+  await expect(cardDialog.getByRole('alert')).toContainText('Could not load external card links.');
   linkState = 'unlinked';
   await cardDialog.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(cardDialog.getByRole('alert')).toHaveCount(0);

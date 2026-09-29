@@ -6,7 +6,7 @@ import { fileRepository } from '../../infrastructure/attachments';
 import { useI18n } from '../../shared/i18n';
 import { Attachments } from './CardAttachments';
 import { CardLabels } from './CardLabels';
-import { CardJiraLinks } from './CardJiraLinks';
+import { CardExternalLinks } from './CardExternalLinks';
 
 type CardDrawerProps = {
   data: State;
@@ -182,7 +182,7 @@ export function CardDrawer({
             </span>
           </div>
           {data.tasks.some((task) => task.id === draft.id) && (
-            <CardJiraLinks
+            <CardExternalLinks
               key={`${data.workspace.id}/${draft.id}`}
               workspace={data.workspace.id}
               card={draft.id}
@@ -190,7 +190,9 @@ export function CardDrawer({
           )}
           {readOnly && (
             <p className="card-read-only-notice" role="note">
-              {t('This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.')}
+              {t(
+                'This card is managed by an external synchronization and is read-only in Kanbada. Make changes in the connected system.',
+              )}
             </p>
           )}
           <fieldset className="card-edit-fields" disabled={readOnly}>

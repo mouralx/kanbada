@@ -13,6 +13,7 @@ Configuration loads ASP.NET Core defaults, optional `appsettings.Local.json`, th
 - `ReverseProxy__KnownProxies__0` (and subsequent numeric entries): explicitly trusted proxy IPs for `X-Forwarded-For` and `X-Forwarded-Proto`; forwarding is disabled without this list. Preserve the public Host header at the proxy.
 - `ASPNETCORE_ENVIRONMENT`: Development locally, Production when deployed.
 - `ASPNETCORE_URLS`: overrides the listening URL when no explicit URL argument is supplied.
+- `GitHub__AllowedHosts`: optional comma-separated Enterprise Server authorities; Compose reads `GITHUB_ALLOWED_HOSTS`. Platform administrators can instead approve servers in the UI. See [GitHub synchronization](github.md) for worker/key-directory requirements.
 
 Vite listens on port 4173 with `strictPort` enabled: a port conflict fails clearly rather than silently starting on a different origin. Its `/api` proxy defaults to `http://127.0.0.1:5180`; `API_PROXY_TARGET` overrides the target (the root Compose file uses `http://api:5180`). Change both proxy/origin settings deliberately if using different ports. Always open `localhost:4173` for the documented OAuth flow; localhost and 127.0.0.1 are different cookie hosts.
 
@@ -66,7 +67,7 @@ Rebuild/redeploy the API, worker and portal together. The format migration delet
 old JSON file chunks, retains those jobs as expired history and requeues pending
 JSON jobs as XLSX. Downloaded files cannot be converted back by a migration rollback.
 The existing
-worker now runs independent Jira and export hosted services; without it, export
+worker now runs independent Jira, GitHub and export hosted services; without it, export
 requests remain visibly queued. It polls jobs every three seconds, reclaims
 interrupted jobs using PostgreSQL advisory locks, and removes expired file chunks.
 Do not run export generation inside the API process.

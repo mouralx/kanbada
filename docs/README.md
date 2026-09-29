@@ -11,6 +11,7 @@ Read [the root README](../README.md) first to run Kanbada.
 7. [Testing and contribution standards](testing.md): repeatable checks, meaningful coverage, and coding conventions.
 8. [Jira synchronization](jira.md): project connections, credentials, mappings, directions, cron schedules, worker deployment and recovery.
 9. [Platform branding](branding.md): administrator configuration, platform name/logo, colors, theme defaults and live preview.
+10. [GitHub Projects synchronization](github.md): Projects v2 connections, field/assignee mappings, Enterprise Server approval, pagination and safe recovery.
 
 Documentation describes the implementation in this repository. Source files and the generated OpenAPI document are the executable contract; update the relevant document whenever behavior changes.
 

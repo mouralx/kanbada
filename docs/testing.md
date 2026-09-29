@@ -62,7 +62,25 @@ asserts that issue creation/update bodies never contain an assignee.
 Run just this feature with
 `dotnet test api/tests/Kanbada.Api.Tests/Kanbada.Api.Tests.csproj --filter FullyQualifiedName~Jira`.
 
+GitHub tests use a fake GraphQL HTTP handler with real PostgreSQL, never live
+GitHub credentials or writes. They cover Projects v2 field/item/nested pagination,
+all three content types, one-way/bidirectional updates, encrypted settings,
+owner/member permissions, Enterprise approval/revocation, optional fields,
+assignment notifications, read-only cards, tombstones, interrupted issue creation,
+idempotent project enrollment, partial-write recovery, concurrent local edits,
+worker locks, rate-limit reset times and pausing without network access.
+Run them with
+`dotnet test api/tests/Kanbada.Api.Tests --filter FullyQualifiedName~GitHub`.
+
 ## Browser coverage
+
+`npm --prefix portal run test:github` covers GitHub field/default/assignee mapping
+controls, saved-run queuing, pausing without remote access, explicit creation retry
+confirmation, card links/read-only controls, and light/dark layouts down to 320 px.
+GitHub endpoints are mocked in this browser script; it creates only a development
+account and local card. Real endpoint persistence and recovery are covered by the
+mock-HTTP/database tests above. Run it separately from other browser suites to
+stay within authentication rate limits.
 
 `npm --prefix portal run test:branding` exercises branding preview, logo upload,
 logo-only centering and accessible names, distinct expanded/collapsed logos,
@@ -109,7 +127,7 @@ Its optional scale regression inserts **1,000,000 cards** into an isolated schem
 and verifies metadata tracks zero cards, a 40-card response tracks only 40 cards
 and stays below 32 KB, and detail reads/edits and totals still work.
 
-`npm test` runs `scripts/check-api-browser.mjs` against the real API. It creates a unique development account and verifies sign-in, Help search/FAQ/Portuguese (56 articles, Jira category, SVG, recovery codes and read-only guidance), card persistence and history, PDF export, dark theme, member profile editing, drawer blur, full-width layouts, and creating a card through Scalar’s actual Send Request UI. The test reports browser exceptions. It intentionally leaves its test account and card in the development database; do not run against production.
+`npm test` runs `scripts/check-api-browser.mjs` against the real API. It creates a unique development account and verifies sign-in, Help search/FAQ/Portuguese (59 articles, Jira/GitHub categories, SVG, recovery codes and read-only guidance), card persistence and history, PDF export, dark theme, member profile editing, drawer blur, full-width layouts, and creating a card through Scalar’s actual Send Request UI. The test reports browser exceptions. It intentionally leaves its test account and card in the development database; do not run against production.
 
 `npm --prefix portal run test:jira` checks project settings, discovery dropdowns,
 cron presets, persisted configuration, stale-version rejection and token secrecy.

@@ -17,7 +17,7 @@ public sealed class WorkspaceMapper(KanbadaDbContext db)
 
     public async Task Load(Guid id, string[]? cardIds = null, bool sharedNotificationsOnly = false)
     {
-        readOnlyCardIds = (await JiraCardPolicy.ReadOnlyCardIds(db, id).Where(x => cardIds == null || cardIds.Contains(x)).ToListAsync()).ToHashSet();
+        readOnlyCardIds = (await ExternalCardPolicy.ReadOnlyCardIds(db, id).Where(x => cardIds == null || cardIds.Contains(x)).ToListAsync()).ToHashSet();
         await db.Set<MemberEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<ProjectEntity>().Where(x => x.WorkspaceId == id).LoadAsync();
         await db.Set<StatusEntity>().Where(x => x.WorkspaceId == id).LoadAsync();

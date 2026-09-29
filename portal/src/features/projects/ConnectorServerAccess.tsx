@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck, Trash2 } from 'lucide-react';
 import { jiraRepository } from '../../infrastructure/jira';
+import { githubRepository } from '../../infrastructure/github';
 import { useI18n } from '../../shared/i18n';
 
-export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
+export function ConnectorServerAccess({
+  baseUrl,
+  provider,
+}: {
+  baseUrl: string;
+  provider: 'Jira' | 'GitHub';
+}) {
   const { t } = useI18n();
+  const repository = provider === 'Jira' ? jiraRepository : githubRepository;
   const [access, setAccess] = useState<Awaited<ReturnType<typeof jiraRepository.hosts>> | null>(
     null,
   );
@@ -14,7 +22,7 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
   const [confirmation, setConfirmation] = useState<{ url: string; revoke: boolean } | null>(null);
   useEffect(() => {
     let active = true;
-    jiraRepository
+    repository
       .hosts()
       .then((result) => {
         if (active) setAccess(result);
@@ -28,7 +36,7 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
     return () => {
       active = false;
     };
-  }, [t]);
+  }, [t, repository]);
   function confirm(url: string, revoke: boolean) {
     setError('');
     setMessage('');
@@ -41,10 +49,10 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
         parsed.search ||
         parsed.hash
       )
-        throw new Error(t('Enter a valid HTTPS Jira base URL first.'));
+        throw new Error(t('Enter a valid HTTPS {0} base URL first.', provider));
       setConfirmation({ url: parsed.origin, revoke });
     } catch {
-      setError(t('Enter a valid HTTPS Jira base URL first.'));
+      setError(t('Enter a valid HTTPS {0} base URL first.', provider));
     }
   }
   async function apply() {
@@ -53,9 +61,9 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
     setError('');
     setMessage('');
     try {
-      if (confirmation.revoke) await jiraRepository.revokeHost(confirmation.url);
-      else await jiraRepository.approveHost(confirmation.url);
-      setAccess(await jiraRepository.hosts());
+      if (confirmation.revoke) await repository.revokeHost(confirmation.url);
+      else await repository.approveHost(confirmation.url);
+      setAccess(await repository.hosts());
       setMessage(
         t(
           confirmation.revoke
@@ -78,7 +86,9 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
       </summary>
       <p className="jira-hint">
         {t(
-          'HTTPS is required. Standard Jira Cloud sites are ready to connect. Other servers need a one-time approval from a platform administrator here, without editing files or restarting services.',
+          provider === 'Jira'
+            ? 'HTTPS is required. Standard Jira Cloud sites are ready to connect. Other servers need a one-time approval from a platform administrator here, without editing files or restarting services.'
+            : 'GitHub.com is ready to connect. GitHub Enterprise Server requires HTTPS and one-time platform administrator approval here.',
         )}
       </p>
       {error && (
@@ -100,11 +110,11 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
             onClick={() => confirm(baseUrl, false)}
           >
             <ShieldCheck size={14} />
-            {t('Approve this Jira server')}
+            {t('Approve this {0} server', provider)}
           </button>
           <p className="jira-hint">
             {t(
-              'Approval applies to all projects on this platform. Approve only Jira servers you trust with credentials and server-side network access.',
+              'Approval applies to all projects. Approve only servers you trust with credentials and server-side network access.',
             )}
           </p>
           {access.hosts.map((host) => (
@@ -136,7 +146,7 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
                 {t(
                   confirmation.revoke
                     ? 'Revoke access for this server? Existing synchronizations will fail until it is approved again. In-flight requests may finish.'
-                    : 'Allow the platform to contact this server and send configured Jira credentials?',
+                    : 'Allow the platform to contact this server and send configured integration credentials?',
                 )}
               </p>
               <div className="jira-server-actions">
@@ -164,7 +174,8 @@ export function JiraServerAccess({ baseUrl }: { baseUrl: string }) {
         access && (
           <p className="jira-hint">
             {t(
-              'Ask a platform administrator to open this panel and approve your Jira server. You can then finish the connection yourself.',
+              'Ask a platform administrator to open this panel and approve your {0} server. You can then finish the connection yourself.',
+              provider,
             )}
           </p>
         )

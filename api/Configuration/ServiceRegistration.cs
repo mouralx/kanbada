@@ -50,6 +50,7 @@ public static class ServiceRegistration
         builder.Services.AddSingleton<PlatformAdmins>();
         builder.Services.AddScoped<PlatformBranding>();
         builder.Services.AddJira(builder.Configuration, Path.Combine(builder.Environment.ContentRootPath, ".data-protection"));
+        builder.Services.AddGitHub(builder.Configuration["GitHub:KeyDirectory"] ?? Path.Combine(builder.Environment.ContentRootPath, ".data-protection"));
         builder.Services.AddHttpClient("gravatar", client => client.Timeout = TimeSpan.FromSeconds(8))
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
         builder.Services.AddSingleton(TimeProvider.System);

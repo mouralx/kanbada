@@ -59,13 +59,5 @@ public sealed record JiraSnapshot(string Title, string DescriptionText, string S
     }
 
     public static string Winner(string direction, string origin, string localHash, string remoteHash, string? previousLocal, string? previousRemote)
-    {
-        if (localHash == remoteHash) return "none";
-        if (direction == "jira-to-kanbada") return "jira";
-        if (direction == "kanbada-to-jira") return "kanbada";
-        var localChanged = localHash != previousLocal;
-        var remoteChanged = remoteHash != previousRemote;
-        if (localChanged && remoteChanged) return origin;
-        return localChanged ? "kanbada" : remoteChanged ? "jira" : "none";
-    }
+        => CardSynchronization.Winner("jira", direction, origin, localHash, remoteHash, previousLocal, previousRemote);
 }

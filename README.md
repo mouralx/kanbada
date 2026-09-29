@@ -21,7 +21,7 @@ podman compose up --force-recreate -d --wait --wait-timeout 600
 ```
 
 Open **[Kanbada](http://localhost:4173)**. Compose starts PostgreSQL, the API
-(with development migrations), the Jira/export worker, and the portal development server. Node.js
+(with development migrations), the Jira/GitHub/export worker, and the portal development server. Node.js
 and a running container engine with Compose are needed on the host; .NET and
 portal dependencies are installed when building the images. The API uses a
 multi-stage build with an ASP.NET runtime image; the portal image runs Vite.
@@ -119,11 +119,16 @@ Cloud or Data Center, one-way or bidirectional synchronization, and cron schedul
 See the [Jira setup and worker guide](docs/jira.md) for host approval, field mappings,
 conflict rules and deployment requirements.
 
+**Project options → GitHub synchronization** connects GitHub Projects v2 on
+github.com or Enterprise Server, with one-way/bidirectional background sync,
+field mappings and issue-creation recovery. A project can have one Jira or GitHub
+connector. See the [GitHub Projects guide](docs/github.md).
+
 Start with the [documentation index](docs/README.md) for architecture, source ownership, API contracts, database migrations, authentication, deployment, and contribution guidance.
 
 - `portal/`: frontend source and browser checks.
 - `api/`: backend source, migrations, and integration tests.
-- `worker/`: independently deployed Jira synchronization and asynchronous export process.
+- `worker/`: independently deployed Jira/GitHub synchronization and asynchronous export process.
 - `docs/`: technical documentation.
 - `scripts/`: repository setup utilities.
 

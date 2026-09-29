@@ -23,9 +23,16 @@ public sealed class JiraSettings(KanbadaDbContext db, WorkspaceResolver resolver
             token = secrets.Unprotect(stored.ProtectedToken);
         }
         if (token.Length > 4096 || token.Any(char.IsControl)) throw new ApiError(400, "Invalid Jira token.");
-        return new JiraConnectionEntity { BaseUrl = url, Edition = input.Edition, Email = input.Email.Trim(),
-            ProtectedToken = secrets.Protect(token), JiraProjectKey = input.JiraProjectKey, Jql = input.Jql,
-            Mappings = stored is not null && stored.BaseUrl == url && stored.Edition == input.Edition ? stored.Mappings : [] };
+        return new JiraConnectionEntity
+        {
+            BaseUrl = url,
+            Edition = input.Edition,
+            Email = input.Email.Trim(),
+            ProtectedToken = secrets.Protect(token),
+            JiraProjectKey = input.JiraProjectKey,
+            Jql = input.Jql,
+            Mappings = stored is not null && stored.BaseUrl == url && stored.Edition == input.Edition ? stored.Mappings : []
+        };
     }
 
     public async Task<Guid> Authorize(string workspaceId, string projectId, Guid user, CancellationToken ct)
@@ -52,10 +59,28 @@ public sealed class JiraSettings(KanbadaDbContext db, WorkspaceResolver resolver
             .Select(l => new { l.Id, l.CardId, l.JiraKey, l.JiraIssueId, l.CreationPending, l.LastError }).ToListAsync(ct);
         return new
         {
-            c.Id, c.Version, c.BaseUrl, c.Edition, c.Email, HasToken = c.ProtectedToken.Length > 0,
-            c.Jql, c.JiraProjectKey, c.IssueTypeId, c.Direction, c.Cron, c.TimeZone, c.Enabled, c.SyncAssignees,
-            c.NextRunAt, c.RequestedAt, c.LastStartedAt, c.LastFinishedAt, c.LastError, c.LastSyncedCount,
-            Mappings = c.Mappings.Select(m => new JiraMappingInput(m.Kind, m.KanbadaValue, m.JiraValue, m.IsDefault)), Problems = problems
+            c.Id,
+            c.Version,
+            c.BaseUrl,
+            c.Edition,
+            c.Email,
+            HasToken = c.ProtectedToken.Length > 0,
+            c.Jql,
+            c.JiraProjectKey,
+            c.IssueTypeId,
+            c.Direction,
+            c.Cron,
+            c.TimeZone,
+            c.Enabled,
+            c.SyncAssignees,
+            c.NextRunAt,
+            c.RequestedAt,
+            c.LastStartedAt,
+            c.LastFinishedAt,
+            c.LastError,
+            c.LastSyncedCount,
+            Mappings = c.Mappings.Select(m => new JiraMappingInput(m.Kind, m.KanbadaValue, m.JiraValue, m.IsDefault)),
+            Problems = problems
         };
     }
 
@@ -69,6 +94,10 @@ public sealed class JiraSettings(KanbadaDbContext db, WorkspaceResolver resolver
             .Select(m => m.UserId!.Value).ToListAsync(ct);
         if (input.Mappings.Any(m => m.Kind == "assignee" && !members.Contains(Guid.Parse(m.KanbadaValue))))
             throw new ApiError(400, "Assignee mappings must refer to registered members of this workspace.");
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM projects WHERE workspace_id = {workspace} AND id = {project} FOR UPDATE", ct);
+        if (await db.Set<GitHubConnectionEntity>().AnyAsync(c => c.WorkspaceId == workspace && c.ProjectId == project, ct))
+            throw new ApiError(409, "This project already has a GitHub connector. Use a separate Kanbada project for Jira.");
         var c = await Find(workspace, project, ct);
         if ((c?.Version ?? 0) != input.Version) throw new ApiError(409, "Jira settings changed. Reload before saving.");
         var url = policy.Validate(input.BaseUrl, input.Edition).AbsoluteUri;
@@ -85,7 +114,7 @@ public sealed class JiraSettings(KanbadaDbContext db, WorkspaceResolver resolver
         }
         else c.Version++;
         if (c.Direction != input.Direction)
-            await JiraCardPolicy.InvalidateWorkspace(db, workspace, ct);
+            await ExternalCardPolicy.InvalidateWorkspace(db, workspace, ct);
         c.BaseUrl = url;
         c.Edition = input.Edition;
         c.Email = input.Email.Trim();
@@ -108,5 +137,6 @@ public sealed class JiraSettings(KanbadaDbContext db, WorkspaceResolver resolver
         foreach (var next in input.Mappings.Where(m => !c.Mappings.Any(old => old.Kind == m.Kind && old.JiraValue == m.JiraValue)))
             c.Mappings.Add(new JiraMappingEntity { ConnectionId = c.Id, Kind = next.Kind, KanbadaValue = next.KanbadaValue, JiraValue = next.JiraValue, IsDefault = next.IsDefault });
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
     }
 }

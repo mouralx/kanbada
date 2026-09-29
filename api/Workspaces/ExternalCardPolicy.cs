@@ -3,16 +3,21 @@ using System.Text.Json.Nodes;
 
 namespace Kanbada.Api;
 
-public static class JiraCardPolicy
+public static class ExternalCardPolicy
 {
-    public const string ReadOnlyMessage = "This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.";
+    public const string ReadOnlyMessage = "This card is managed by an external synchronization and is read-only in Kanbada. Make changes in the connected system.";
 
     public static IQueryable<string> ReadOnlyCardIds(KanbadaDbContext db, Guid workspace) =>
         (from link in db.Set<JiraLinkEntity>()
          join connection in db.Set<JiraConnectionEntity>() on link.ConnectionId equals connection.Id
          where connection.WorkspaceId == workspace && connection.Direction == "jira-to-kanbada"
              && link.JiraIssueId != null && !link.CreationPending
-         select link.CardId).Distinct();
+         select link.CardId).Union(
+            from link in db.Set<GitHubLinkEntity>()
+            join connection in db.Set<GitHubConnectionEntity>() on link.ConnectionId equals connection.Id
+            where connection.WorkspaceId == workspace && connection.Direction == "github-to-kanbada"
+                && link.ContentId != null && !link.CreationPending
+            select link.CardId);
 
     public static void ValidateChanges(JsonObject before, JsonObject after)
     {

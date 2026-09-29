@@ -33,6 +33,36 @@ public sealed class KanbadaDbContext(DbContextOptions<KanbadaDbContext> options)
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<GitHubApprovedHostEntity>(e =>
+        {
+            e.ToTable("github_approved_hosts");
+            e.HasKey(x => x.Authority);
+        });
+        model.Entity<GitHubConnectionEntity>(e =>
+        {
+            e.ToTable("github_connections");
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.WorkspaceId, x.ProjectId }).IsUnique();
+            e.HasIndex(x => new { x.WorkspaceId, x.BaseUrl, x.RemoteProjectId }).IsUnique();
+            e.HasOne<ProjectEntity>().WithMany().HasForeignKey(x => new { x.WorkspaceId, x.ProjectId }).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasMany(x => x.Mappings).WithOne().HasForeignKey(x => x.ConnectionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.Enabled, x.NextRunAt });
+        });
+        model.Entity<GitHubMappingEntity>(e =>
+        {
+            e.ToTable("github_mappings");
+            e.HasKey(x => new { x.ConnectionId, x.Kind, x.GitHubValue });
+        });
+        model.Entity<GitHubLinkEntity>(e =>
+        {
+            e.ToTable("github_links");
+            e.HasKey(x => x.Id);
+            e.HasOne<GitHubConnectionEntity>().WithMany().HasForeignKey(x => x.ConnectionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ConnectionId, x.CardId }).IsUnique();
+            e.HasIndex(x => new { x.ConnectionId, x.ItemId }).IsUnique();
+            e.HasIndex(x => new { x.ConnectionId, x.ContentId }).IsUnique();
+        });
         model.Entity<ExportJobEntity>(e =>
         {
             e.ToTable("exports");

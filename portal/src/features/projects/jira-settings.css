@@ -19,6 +19,29 @@
 .jira-settings {
   padding: 26px 28px 0;
 }
+.github-mapping-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 14px 0;
+}
+.github-problem {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 14px;
+  overflow-wrap: anywhere;
+}
+.github-problem fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.github-save-bar {
+  flex-wrap: wrap;
+}
 .jira-intro {
   display: flex;
   align-items: center;
@@ -395,6 +418,9 @@
   .jira-connection-grid,
   .jira-mapping-grid,
   .jira-status-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .github-mapping-row {
     grid-template-columns: minmax(0, 1fr);
   }
   .jira-schedule-row {

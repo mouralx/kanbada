@@ -24,6 +24,7 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       PortalOrigin: ${PORTAL_ORIGIN:-http://localhost:4173}
       Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
+      GitHub__AllowedHosts: ${GITHUB_ALLOWED_HOSTS:-}
       Platform__AdminEmails: ${PLATFORM_ADMIN_EMAILS:-}
       Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID:-}
       Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
@@ -60,6 +61,7 @@ services:
     image: ghcr.io/mouralx/kanbada-worker:latest
     environment:
       Jira__AllowedHosts: ${JIRA_ALLOWED_HOSTS:-}
+      GitHub__AllowedHosts: ${GITHUB_ALLOWED_HOSTS:-}
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the stack environment}
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the stack environment}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}

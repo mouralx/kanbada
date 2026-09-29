@@ -27,6 +27,7 @@ NotificationEndpoints.Map(api);
 CardEndpoints.Map(api);
 JiraEndpoints.Map(api);
 JiraHostApproval.Map(api);
+GitHubEndpoints.Map(api);
 FileEndpoints.Map(api);
 ShareEndpoints.Map(api);
 InvitationEndpoints.Map(api);

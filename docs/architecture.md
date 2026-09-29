@@ -23,7 +23,7 @@ Views receive state and typed callbacks; the workspace shell coordinates changes
 ## Backend boundaries
 
 The API is a deployable assembly with feature folders. The separate
-`worker/Kanbada.Worker.csproj` process references it to share persistence, export and Jira
+`worker/Kanbada.Worker.csproj` process references it to share persistence, export, Jira and GitHub
 synchronization logic without running HTTP endpoints. The public namespace remains `Kanbada.Api`.
 
 - `Program.cs`: configuration entry point, middleware order, route composition, startup migration.

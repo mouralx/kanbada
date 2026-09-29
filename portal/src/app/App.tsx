@@ -252,7 +252,9 @@ export function App() {
     if (uploading || saving) return;
     const previous = data.tasks.find((t) => t.id === task.id);
     if (previous?.readOnly) {
-      setToast('This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.');
+      setToast(
+        'This card is managed by an external synchronization and is read-only in Kanbada. Make changes in the connected system.',
+      );
       return;
     }
     const updated = recordChanges(previous, task, currentMember.name);
@@ -522,7 +524,9 @@ export function App() {
     }
     if (!task) return;
     if (task.readOnly) {
-      setToast('This card is managed by Jira and is read-only in Kanbada. Make changes in Jira.');
+      setToast(
+        'This card is managed by an external synchronization and is read-only in Kanbada. Make changes in the connected system.',
+      );
       return;
     }
     if (lane.project && task.project !== lane.project) {

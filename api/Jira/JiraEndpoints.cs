@@ -78,7 +78,7 @@ public static class JiraEndpoints
             link.JiraIssueId = input.JiraIssueId;
             link.CreationPending = false;
             link.LastError = null;
-            await JiraCardPolicy.InvalidateWorkspace(db, workspace, ct);
+            await ExternalCardPolicy.InvalidateWorkspace(db, workspace, ct);
             await db.SaveChangesAsync(ct);
             return Results.NoContent();
         });

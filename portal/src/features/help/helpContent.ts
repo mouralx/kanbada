@@ -14,8 +14,45 @@ export const helpCategories = [
   ['Dashboards & exports', 'Painéis e exportações'],
   ['Links & sharing', 'Ligações e partilha'],
   ['Jira synchronization', 'Sincronização Jira'],
+  ['GitHub synchronization', 'Sincronização com o GitHub'],
 ];
 export const helpArticles: HelpArticle[] = [
+  {
+    id: 'github-connect',
+    category: 'GitHub synchronization',
+    en: [
+      'How do I connect a GitHub project?',
+      'As workspace owner, open Project options → GitHub synchronization. Use a Projects v2 organization or user project on github.com or GitHub Enterprise Server. Enter the HTTPS server, owner, project number and token; outbound sync also needs an owner/repository for new issues. Enterprise servers need platform administrator approval under Server access. Test connection and load mappings makes read-only requests. Choose status and optional priority/date fields, map their options, select direction and cron/time zone, enable and save. Each Kanbada project allows one Jira or GitHub connector. Tokens are encrypted on the server.',
+    ],
+    pt: [
+      'Como ligo um projeto GitHub?',
+      'Como proprietário do espaço, abra Opções do projeto → Sincronização com o GitHub. Use um projeto Projects v2 de organização ou utilizador no github.com ou GitHub Enterprise Server. Introduza o servidor HTTPS, proprietário, número do projeto e token; a sincronização de saída também exige proprietário/repositório para novas issues. Os servidores Enterprise precisam de aprovação do administrador da plataforma em Acesso ao servidor. Testar a ligação e carregar mapeamentos só faz pedidos de leitura. Escolha estado e campos opcionais de prioridade/data, associe as opções, selecione direção e cron/fuso horário, ative e guarde. Cada projeto Kanbada admite um conector Jira ou GitHub. Os tokens são cifrados no servidor.',
+    ],
+  },
+  {
+    id: 'github-fields',
+    category: 'GitHub synchronization',
+    en: [
+      'What does GitHub synchronization change?',
+      'Issues, pull requests and draft items synchronize titles, Markdown descriptions and project status. Priority, due date, labels and inbound assignee mappings are optional. Map empty fields explicitly; priorities need Low, Medium and High mappings. Several GitHub options may share a Kanbada value with one default outbound option. Find assignees by GitHub login and map registered members; unmapped users produce a warning. Draft labels and unconfigured local fields are preserved. New outbound cards become issues. Project status never closes issues or merges pull requests; deletions, comments and attachments never propagate. Bidirectional conflicts use the original creation system. Inbound-only cards stay read-only even when paused, and card Details provides Open in GitHub.',
+    ],
+    pt: [
+      'O que altera a sincronização GitHub?',
+      'Issues, pull requests e rascunhos sincronizam títulos, descrições Markdown e estado do projeto. Prioridade, data limite, etiquetas e correspondências de responsáveis recebidos são opcionais. Associe campos vazios explicitamente; as prioridades exigem Baixa, Média e Alta. Várias opções GitHub podem partilhar um valor Kanbada com uma predefinição de saída. Procure responsáveis pelo nome de utilizador GitHub e associe membros registados; utilizadores sem correspondência geram um aviso. Etiquetas de rascunhos e campos locais não configurados são preservados. Novos cartões enviados tornam-se issues. O estado nunca fecha issues nem integra pull requests; eliminações, comentários e anexos nunca se propagam. Conflitos bidirecionais usam o sistema de criação original. Cartões apenas de entrada continuam só de leitura em pausa, e Detalhes permite Abrir no GitHub.',
+    ],
+  },
+  {
+    id: 'github-recovery',
+    category: 'GitHub synchronization',
+    en: [
+      'How do I follow or recover a GitHub synchronization?',
+      'Run saved settings queues background work; the dialog refreshes status every five seconds. The worker pages remote items and local cards instead of loading everything. Review the displayed errors, including missing mappings, inaccessible items or rate limits. Pause synchronization works even if GitHub is unavailable. A lost issue-creation response is not retried automatically: check GitHub, attach the verified issue URL, then run again. Only confirm a new creation attempt if you verified that no issue exists; otherwise duplicates are possible. Known issues resume project enrollment without creating another issue. Partial outbound updates finish from Kanbada before normal conflict detection resumes.',
+    ],
+    pt: [
+      'Como acompanho ou recupero uma sincronização GitHub?',
+      'Executar definições guardadas coloca trabalho em fila; o diálogo atualiza o estado a cada cinco segundos. O serviço pagina os itens remotos e cartões locais em vez de carregar tudo. Consulte os erros apresentados, incluindo correspondências em falta, itens inacessíveis ou limites de pedidos. Pausar sincronização funciona mesmo com o GitHub indisponível. Uma resposta perdida na criação de uma issue não é repetida automaticamente: verifique o GitHub, associe o URL confirmado e execute novamente. Só confirme nova tentativa se verificou que nenhuma issue existe; caso contrário, pode criar duplicados. Issues conhecidas retomam a associação ao projeto sem criar outra. Atualizações de saída parciais terminam a partir do Kanbada antes de retomar a deteção normal de conflitos.',
+    ],
+  },
   {
     id: 'signin',
     category: 'Account & appearance',

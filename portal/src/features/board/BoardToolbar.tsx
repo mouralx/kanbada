@@ -282,6 +282,17 @@ export function BoardToolbar({
                     {t('Jira synchronization')}
                   </button>
                 )}
+                {apiEnabled && data.workspace.canManage && project.id && (
+                  <button
+                    onClick={() => {
+                      setMenu(false);
+                      setModal('GitHub synchronization');
+                    }}
+                  >
+                    <SlidersHorizontal size={15} />
+                    {t('GitHub synchronization')}
+                  </button>
+                )}
                 <button
                   disabled={exporting}
                   onClick={async () => {

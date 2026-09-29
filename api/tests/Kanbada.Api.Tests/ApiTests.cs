@@ -159,7 +159,7 @@ public sealed class ApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
                     NextRunAt = DateTimeOffset.UtcNow
                 });
                 db.Add(new JiraLinkEntity { Id = Guid.NewGuid(), ConnectionId = connectionId, CardId = cardId, JiraIssueId = "101", JiraKey = "TEAM-101", Origin = "jira" });
-                await JiraCardPolicy.InvalidateWorkspace(db, workspace, default);
+                await ExternalCardPolicy.InvalidateWorkspace(db, workspace, default);
                 await db.SaveChangesAsync();
             }
             var state = await Body(await client.GetAsync("/api/workspaces/studio"));
