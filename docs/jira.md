@@ -72,13 +72,31 @@ Jira identities to registered workspace members. Existing connections default to
 disabled so upgrades do not replace local assignments. Cloud uses `accountId`;
 Data Center uses the user `key`, falling back to `name` only when Jira supplies no
 key. The dropdown displays names for assignees from JQL results and saved mappings,
-not the entire Jira directory. Display names and emails are never used as matching
-keys. Pending invitees cannot
+not the entire Jira directory. Manual mappings use stable Jira identities, not
+display names or emails. Pending invitees cannot
 be mapped until they have joined the workspace.
+
+Optionally enable **Add missing assignees as unregistered members**
+(`importMissingAssignees`, default `false`). For assignees encountered on synced
+issues, explicit mappings take precedence; otherwise the connector matches
+workspace members by email or creates an unregistered member with Jira's email
+and display name. This requires `syncAssignees` and an inbound direction; it does
+not import the entire Jira directory. Missing/invalid emails or display names
+produce a visible warning and no new member; use a manual mapping when Jira
+hides an email. A stale explicit mapping must be fixed rather than silently
+replaced by an email match.
+
+Email matching is case-insensitive. Existing names are preserved, and new
+display-name collisions get numbered suffixes. New members have no account ID
+or login access, even if an account with that email exists elsewhere. No login
+accounts or automatic invitation emails are created. The owner can share the
+normal invitation link to let them join. Unregistered members receive no private
+assignment notifications. Apply the `ImportMissingSynchronizationAssignees`
+migration before deployment.
 
 Assignees flow only from Jira in **Jira to Kanbada** or **Bidirectional** mode.
 The single mapped member replaces the card's current assignees. An unassigned Jira
-issue clears the local assignees without warning. An unmapped Jira user (or a
+issue clears the local assignees without warning. An unresolved Jira user (or a
 mapping whose member has left) also clears them, but records an **Assignee mapping
 warning** in the run/link details. Other mapped fields still synchronize. Fixing
 the mapping resolves the assignment and warning on the next run even if no other

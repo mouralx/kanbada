@@ -7,6 +7,7 @@ internal sealed class FakeGitHub : HttpMessageHandler
     public Dictionary<string, JsonObject> Items { get; } = [];
     public Dictionary<string, JsonObject> Contents { get; } = [];
     public Dictionary<string, string> Labels { get; } = [];
+    public Dictionary<string, JsonObject> Users { get; } = [];
     public List<string> Queries { get; } = [];
     public List<Uri> Destinations { get; } = [];
     public List<JsonObject> Mutations { get; } = [];
@@ -218,6 +219,9 @@ internal sealed class FakeGitHub : HttpMessageHandler
         }
         else if (query.Contains("repository(owner:"))
             data = new JsonObject { ["repository"] = new JsonObject { ["id"] = "REPO", ["isArchived"] = false, ["hasIssuesEnabled"] = true } };
+        else if (query.Contains("nodes(ids:"))
+            data = new JsonObject { ["nodes"] = new JsonArray(variables["ids"]!.AsArray().Select(id =>
+                Users.TryGetValue(id!.GetValue<string>(), out var profile) ? profile.DeepClone() : null).ToArray()) };
         else if (query.Contains("user(login:"))
             data = new JsonObject { ["user"] = new JsonObject { ["id"] = "USER-1", ["login"] = variables["login"]!.DeepClone() } };
         else if (query.Contains("items(first:"))

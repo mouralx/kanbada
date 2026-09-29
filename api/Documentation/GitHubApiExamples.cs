@@ -19,6 +19,7 @@ public static class GitHubApiExamples
         dueFieldId = "",
         syncLabels = true,
         syncAssignees = false,
+        importMissingAssignees = false,
         cron = "*/15 * * * *",
         timeZone = "UTC",
         enabled = false,
@@ -37,6 +38,8 @@ public static class GitHubApiExamples
         hasToken = true,
         direction = "github-to-kanbada",
         enabled,
+        syncAssignees = false,
+        importMissingAssignees = false,
         lastSyncedCount = 0,
         lastError = (string?)null,
         problems = Array.Empty<object>()

@@ -60,7 +60,7 @@ public sealed record JiraMappingInput(string Kind, string KanbadaValue, string J
 public sealed record JiraConnectionInput(
     long Version, string BaseUrl, string Edition, string Email, string? Token, string Jql,
     string JiraProjectKey, string IssueTypeId, string Direction, string Cron, string TimeZone,
-    bool Enabled, List<JiraMappingInput> Mappings, bool SyncAssignees = false);
+    bool Enabled, List<JiraMappingInput> Mappings, bool SyncAssignees = false, bool ImportMissingAssignees = false);
 
 public static class JiraConfiguration
 {

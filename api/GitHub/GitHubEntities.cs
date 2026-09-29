@@ -18,6 +18,7 @@ public sealed class GitHubConnectionEntity
     public string PriorityFieldId { get; set; } = "";
     public string DueFieldId { get; set; } = "";
     public bool SyncAssignees { get; set; }
+    public bool ImportMissingAssignees { get; set; }
     public bool SyncLabels { get; set; } = true;
     public string Cron { get; set; } = "*/15 * * * *";
     public string TimeZone { get; set; } = "UTC";
@@ -72,7 +73,8 @@ public sealed record GitHubMappingInput(string Kind, string KanbadaValue, string
 public sealed record GitHubConnectionInput(
     long Version, string BaseUrl, string Owner, string OwnerType, int ProjectNumber, string Repository,
     string? Token, string Direction, string StatusFieldId, string PriorityFieldId, string DueFieldId,
-    bool SyncLabels, bool SyncAssignees, string Cron, string TimeZone, bool Enabled, List<GitHubMappingInput> Mappings);
+    bool SyncLabels, bool SyncAssignees, string Cron, string TimeZone, bool Enabled, List<GitHubMappingInput> Mappings, bool ImportMissingAssignees = false);
+public sealed record GitHubAssigneeProfile(string? Email, string Name);
 public sealed record GitHubOption(string Id, string Name);
 public sealed record GitHubField(string Id, string Name, string DataType, List<GitHubOption> Options);
 public sealed record GitHubMetadata(string ProjectId, string Title, string Url, string RepositoryId, List<GitHubField> Fields);

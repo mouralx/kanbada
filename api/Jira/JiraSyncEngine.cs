@@ -268,9 +268,15 @@ public sealed class JiraSyncEngine(KanbadaDbContext db, NpgsqlDataSource source,
             if (mapping is not null && Guid.TryParse(mapping.KanbadaValue, out var user))
                 email = await db.Members.Where(m => m.WorkspaceId == c.WorkspaceId && m.UserId == user)
                     .Select(m => m.Email).SingleOrDefaultAsync(ct);
+            if (mapping is null && c.ImportMissingAssignees)
+                email = await SynchronizationMembers.FindOrAdd(db, c.WorkspaceId,
+                    issue.Fields["assignee"]!["emailAddress"]?.GetValue<string>(),
+                    issue.Fields["assignee"]!["displayName"]?.GetValue<string>(), ct);
             if (email is null)
             {
-                warning = $"Assignee mapping warning: Jira user {identity} has no mapped workspace member. The card was left unassigned.";
+                warning = c.ImportMissingAssignees
+                    ? $"Assignee mapping warning: Jira user {identity} needs a valid visible email and display name, or a valid manual mapping. The card was left unassigned."
+                    : $"Assignee mapping warning: Jira user {identity} has no mapped workspace member. The card was left unassigned.";
                 logger.LogWarning("Jira item {Item}: {Warning}", issue.Key, warning);
             }
         }

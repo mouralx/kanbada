@@ -19,6 +19,7 @@ public static class JiraApiExamples
         timeZone = "Europe/Lisbon",
         enabled = false,
         syncAssignees = false,
+        importMissingAssignees = false,
         mappings = new[]
         {
             new { kind = "status", kanbadaValue = "backlog", jiraValue = "10000", isDefault = true },

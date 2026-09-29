@@ -76,6 +76,25 @@ assignees clears them. Unmapped/inaccessible members are omitted with a visible
 warning. Missing API assignee data is an error, not an empty assignment list.
 Assignment notifications and card history follow normal workspace behavior.
 
+Enable **Add missing assignees as unregistered members** to match otherwise
+unmapped assignees by email and add missing members using their GitHub display
+name (or login if no name is set). This is off by default and requires assignee
+synchronization in an inbound direction. GitHub often hides email addresses:
+missing/invalid emails are skipped with a visible warning, never guessed.
+Only assignees encountered on synced items are considered, not the entire directory.
+Explicit mappings take precedence, including when a mapped member has left;
+fix that mapping rather than silently substituting an email match.
+
+Existing members are reused case-insensitively by email without renaming them.
+New members have no user/account ID or login access, even if an account with
+that email exists elsewhere in Kanbada. The owner can share their normal
+invitation link to let them join; no invitation email is sent automatically.
+Display-name collisions get numbered suffixes. No accounts are created, and
+unregistered members receive no private assignment notifications. Profile reads
+are batched in groups of at most 100. Turning this option off restores
+manual-mapping-only behavior. The API flag is `importMissingAssignees`.
+Apply the `ImportMissingSynchronizationAssignees` migration before deployment.
+
 **Project status is not issue/PR state.** Sync never closes/reopens issues,
 merges/closes pull requests, or propagates deletions. Comments, attachments,
 checklists, buckets and swimlanes remain local. Archived, removed, redacted or

@@ -37,6 +37,7 @@ export function GitHubSettings({
     dueFieldId: '',
     syncLabels: true,
     syncAssignees: false,
+    importMissingAssignees: false,
     cron: '*/15 * * * *',
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     enabled: false,
@@ -280,7 +281,7 @@ export function GitHubSettings({
         </p>
         <p>
           {t(
-            'Assignees are inbound only. Unmapped GitHub users are omitted with a visible warning. Draft items have no labels; local labels are preserved. Inbound-only linked cards stay read-only even when synchronization is paused.',
+            'Assignees are inbound only. GitHub users without a valid mapping or email match/import are omitted with a visible warning. Draft items have no labels; local labels are preserved. Inbound-only linked cards stay read-only even when synchronization is paused.',
           )}
         </p>
       </details>
@@ -429,6 +430,20 @@ export function GitHubSettings({
           />
           {t('Map GitHub assignees to workspace members')}
         </label>
+        <label className="jira-assignee-toggle">
+          <input
+            type="checkbox"
+            disabled={!input.syncAssignees}
+            checked={input.importMissingAssignees ?? false}
+            onChange={(event) => change('importMissingAssignees', event.target.checked)}
+          />
+          {t('Add missing assignees as unregistered members')}
+        </label>
+        <p className="jira-hint">
+          {t(
+            'When this option and inbound assignee synchronization are enabled, match unmapped users by email or add their display name and email as an unregistered member. No accounts or access are granted; share an invitation to let them join. Manual mappings take precedence. Hidden or invalid emails are skipped with a warning.',
+          )}
+        </p>
         {input.syncAssignees && (
           <>
             <div className="github-mapping-row">

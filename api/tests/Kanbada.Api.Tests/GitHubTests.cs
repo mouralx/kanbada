@@ -100,6 +100,138 @@ public sealed class GitHubTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     [Fact]
+    public async Task OptionalMemberImportsReuseEmailsAndNeverCreateAccountsOrGrantAccess()
+    {
+        var s = await Setup("github-to-kanbada");
+        using (s.Scope)
+        {
+            var users = await s.Db.Users.CountAsync();
+            await s.Settings.Save(s.Connection.WorkspaceId, s.Connection.ProjectId,
+                s.Input with { Version = 1, ImportMissingAssignees = true }, default);
+            Assert.True((await s.Settings.Find(s.Connection.WorkspaceId, s.Connection.ProjectId, default))!.ImportMissingAssignees);
+            s.Remote.Add("ONE");
+            s.Remote.Add("TWO", "DraftIssue");
+            s.Remote.Users["NEW"] = new JsonObject { ["__typename"] = "User", ["id"] = "NEW", ["login"] = "remote", ["name"] = "Remote Person", ["email"] = " REMOTE@example.test " };
+            s.Remote.Users["SAME-EMAIL"] = new JsonObject { ["__typename"] = "User", ["id"] = "SAME-EMAIL", ["login"] = "alias", ["name"] = "Do not rename", ["email"] = "remote@example.test" };
+            s.Remote.Users["HIDDEN"] = new JsonObject { ["__typename"] = "User", ["id"] = "HIDDEN", ["login"] = "hidden", ["name"] = "Hidden", ["email"] = "" };
+            var ownerEmail = await s.Db.Members.Where(m => m.WorkspaceId == s.Connection.WorkspaceId).Select(m => m.Email).SingleAsync();
+            s.Remote.Users["OWNER-ALIAS"] = new JsonObject { ["__typename"] = "User", ["id"] = "OWNER-ALIAS", ["login"] = "owner", ["name"] = "Do not rename owner", ["email"] = ownerEmail.ToUpperInvariant() };
+            s.Remote.Content("ONE")["assignees"] = new JsonArray(new JsonObject { ["id"] = "NEW" }, new JsonObject { ["id"] = "HIDDEN" }, new JsonObject { ["id"] = "USER-1" });
+            s.Remote.Content("TWO")["assignees"] = new JsonArray(new JsonObject { ["id"] = "SAME-EMAIL" }, new JsonObject { ["id"] = "OWNER-ALIAS" });
+            await Run(s);
+            var member = await s.Db.Members.SingleAsync(m => m.WorkspaceId == s.Connection.WorkspaceId && m.Email == "remote@example.test");
+            Assert.Equal("Remote Person", member.Name);
+            Assert.Null(member.UserId);
+            Assert.NotNull(member.InviteToken);
+            Assert.Equal(users, await s.Db.Users.CountAsync());
+            Assert.Equal(2, await s.Db.Members.CountAsync(m => m.WorkspaceId == s.Connection.WorkspaceId));
+            Assert.Equal(4, await s.Db.CardAssignees.CountAsync(a => a.WorkspaceId == s.Connection.WorkspaceId));
+            Assert.Equal(2, await s.Db.Notifications.CountAsync(n => n.WorkspaceId == s.Connection.WorkspaceId));
+            Assert.Equal("GitHub owner", (await s.Db.Members.SingleAsync(m => m.WorkspaceId == s.Connection.WorkspaceId && m.Email == ownerEmail)).Name);
+            Assert.Contains("visible email", (await s.Db.Set<GitHubLinkEntity>().SingleAsync(l => l.ConnectionId == s.Connection.Id && l.ItemId == "ONE")).LastError);
+            var version = await s.Db.Workspaces.Where(w => w.Id == s.Connection.WorkspaceId).Select(w => w.Version).SingleAsync();
+            await Run(s);
+            Assert.Equal(version, await s.Db.Workspaces.Where(w => w.Id == s.Connection.WorkspaceId).Select(w => w.Version).SingleAsync());
+            Assert.Equal(member.InviteToken, (await s.Db.Members.SingleAsync(m => m.WorkspaceId == s.Connection.WorkspaceId && m.Email == member.Email)).InviteToken);
+            Assert.Empty(s.Remote.Mutations);
+        }
+    }
+
+    [Theory]
+    [InlineData(false, true, "github-to-kanbada")]
+    [InlineData(true, false, "github-to-kanbada")]
+    [InlineData(true, true, "kanbada-to-github")]
+    public async Task MissingMemberImportRequiresBothFlagsAndAnInboundDirection(bool import, bool sync, string direction)
+    {
+        var s = await Setup(direction);
+        using (s.Scope)
+        {
+            await s.Settings.Save(s.Connection.WorkspaceId, s.Connection.ProjectId,
+                s.Input with { Version = 1, ImportMissingAssignees = import, SyncAssignees = sync }, default);
+            s.Remote.Add("ONE");
+            s.Remote.Content("ONE")["assignees"] = new JsonArray(new JsonObject { ["id"] = "NEW" });
+            s.Remote.Users["NEW"] = new JsonObject { ["__typename"] = "User", ["id"] = "NEW", ["login"] = "new", ["name"] = "New", ["email"] = "new@example.test" };
+            await Run(s);
+            Assert.Single(await s.Db.Members.Where(m => m.WorkspaceId == s.Connection.WorkspaceId).ToListAsync());
+            Assert.DoesNotContain(s.Remote.Queries, q => q.Contains("nodes(ids:"));
+        }
+    }
+
+    [Fact]
+    public async Task MemberImportHandlesNameCollisionsInvalidProfilesAndExistingAccountsSafely()
+    {
+        var s = await Setup();
+        using (s.Scope)
+        {
+            var workspace = s.Connection.WorkspaceId;
+            var unrelated = new UserEntity { Id = Guid.NewGuid(), Email = "existing-" + Guid.NewGuid() + "@example.test", Name = "Account outside workspace" };
+            s.Db.Add(unrelated);
+            await s.Db.SaveChangesAsync();
+            await using var tx = await s.Db.Database.BeginTransactionAsync();
+            var ownerName = await s.Db.Members.Where(m => m.WorkspaceId == workspace).Select(m => m.Name).SingleAsync();
+            var first = await SynchronizationMembers.FindOrAdd(s.Db, workspace, unrelated.Email, ownerName, default);
+            var second = await SynchronizationMembers.FindOrAdd(s.Db, workspace, "second@example.test", ownerName, default);
+            var emoji = await SynchronizationMembers.FindOrAdd(s.Db, workspace, "emoji@example.test", "\U0001F600 Person", default);
+            Assert.Null(await SynchronizationMembers.FindOrAdd(s.Db, workspace, "not-email", "Name", default));
+            Assert.Null(await SynchronizationMembers.FindOrAdd(s.Db, workspace, "Name <user@example.test>", "Name", default));
+            Assert.Null(await SynchronizationMembers.FindOrAdd(s.Db, workspace, "empty@example.test", "", default));
+            await s.Db.SaveChangesAsync();
+            var member = await s.Db.Members.SingleAsync(m => m.WorkspaceId == workspace && m.Email == first);
+            Assert.Equal(ownerName + " (2)", member.Name);
+            Assert.Null(member.UserId);
+            Assert.Equal(ownerName + " (3)", (await s.Db.Members.SingleAsync(m => m.WorkspaceId == workspace && m.Email == second)).Name);
+            Assert.Equal("\U0001F600P", (await s.Db.Members.SingleAsync(m => m.WorkspaceId == workspace && m.Email == emoji)).Initials);
+            await tx.RollbackAsync();
+            s.Db.ChangeTracker.Clear();
+            Assert.Single(await s.Db.Members.Where(m => m.WorkspaceId == workspace).ToListAsync());
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ManualAssigneeMappingsNeverFallBackToEmail(bool staleMapping)
+    {
+        var s = await Setup("github-to-kanbada");
+        using (s.Scope)
+        {
+            await s.Settings.Save(s.Connection.WorkspaceId, s.Connection.ProjectId,
+                s.Input with { Version = 1, ImportMissingAssignees = true }, default);
+            var mapping = await s.Db.Set<GitHubMappingEntity>().SingleAsync(m => m.ConnectionId == s.Connection.Id && m.Kind == "assignee");
+            if (staleMapping)
+            {
+                mapping.KanbadaValue = Guid.NewGuid().ToString();
+                await s.Db.SaveChangesAsync();
+            }
+            s.Remote.Add("ONE");
+            s.Remote.Content("ONE")["assignees"] = new JsonArray(new JsonObject { ["id"] = "USER-1" });
+            s.Remote.Users["USER-1"] = new JsonObject { ["__typename"] = "User", ["id"] = "USER-1", ["login"] = "different", ["name"] = "Different user", ["email"] = "different@example.test" };
+            await Run(s);
+            Assert.Single(await s.Db.Members.Where(m => m.WorkspaceId == s.Connection.WorkspaceId).ToListAsync());
+            Assert.Equal(staleMapping ? 0 : 1, await s.Db.CardAssignees.CountAsync(a => a.WorkspaceId == s.Connection.WorkspaceId));
+            Assert.DoesNotContain(s.Remote.Queries, q => q.Contains("nodes(ids:"));
+            if (staleMapping)
+                Assert.Contains("manual mapping", (await s.Db.Set<GitHubLinkEntity>().SingleAsync(l => l.ConnectionId == s.Connection.Id)).LastError);
+        }
+    }
+
+    [Fact]
+    public async Task GitHubAssigneeProfilesAreBatchedAndUseLoginWhenNameIsEmpty()
+    {
+        var s = await Setup();
+        using (s.Scope)
+        {
+            var ids = Enumerable.Range(0, 103).Select(i => "USER-" + i).ToArray();
+            foreach (var id in ids)
+                s.Remote.Users[id] = new JsonObject { ["__typename"] = "User", ["id"] = id, ["login"] = id, ["name"] = null, ["email"] = id + "@example.test" };
+            var profiles = await s.Client.AssigneeProfiles(s.Connection, ids, default);
+            Assert.Equal(103, profiles.Count);
+            Assert.Equal(2, s.Remote.Queries.Count(q => q.Contains("nodes(ids:")));
+            Assert.Equal("USER-0", profiles["USER-0"].Name);
+        }
+    }
+
+    [Fact]
     public async Task ApiAuthorizesOwnersAndMembersAndRecoversUncertainCreations()
     {
         var s = await Setup("kanbada-to-github");

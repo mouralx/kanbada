@@ -26,7 +26,7 @@ public sealed class GitHubSettings(KanbadaDbContext db, WorkspaceResolver resolv
         return new
         {
             c.Id, c.Version, c.BaseUrl, c.Owner, c.OwnerType, c.ProjectNumber, c.Repository, HasToken = c.ProtectedToken.Length > 0,
-            c.RemoteProjectId, c.RepositoryId, c.Direction, c.StatusFieldId, c.PriorityFieldId, c.DueFieldId, c.SyncLabels, c.SyncAssignees,
+            c.RemoteProjectId, c.RepositoryId, c.Direction, c.StatusFieldId, c.PriorityFieldId, c.DueFieldId, c.SyncLabels, c.SyncAssignees, c.ImportMissingAssignees,
             c.Cron, c.TimeZone, c.Enabled, c.NextRunAt, c.RequestedAt, c.LastStartedAt, c.LastFinishedAt, c.LastError, c.LastSyncedCount,
             Mappings = c.Mappings.Select(m => new GitHubMappingInput(m.Kind, m.KanbadaValue, m.GitHubValue, m.IsDefault)), Problems = problems
         };
@@ -115,6 +115,7 @@ public sealed class GitHubSettings(KanbadaDbContext db, WorkspaceResolver resolv
         c.Repository = candidate.Repository; c.RemoteProjectId = metadata.ProjectId; c.RepositoryId = metadata.RepositoryId; c.ProtectedToken = candidate.ProtectedToken;
         c.Direction = input.Direction; c.StatusFieldId = input.StatusFieldId; c.PriorityFieldId = input.PriorityFieldId; c.DueFieldId = input.DueFieldId;
         c.SyncLabels = input.SyncLabels; c.SyncAssignees = input.SyncAssignees; c.Cron = input.Cron.Trim(); c.TimeZone = input.TimeZone; c.Enabled = input.Enabled;
+        c.ImportMissingAssignees = input.ImportMissingAssignees;
         c.NextRunAt = JiraSchedule.Next(c.Cron, c.TimeZone, DateTimeOffset.UtcNow);
         foreach (var old in c.Mappings.ToList())
         {

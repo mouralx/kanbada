@@ -301,11 +301,16 @@ public sealed class GitHubSyncEngine(KanbadaDbContext db, NpgsqlDataSource sourc
         if (!c.SyncAssignees || c.Direction == "kanbada-to-github") return (false, null);
         var emails = new HashSet<string>();
         var unmapped = 0;
+        var profiles = c.ImportMissingAssignees
+            ? await github.AssigneeProfiles(c, content.Assignees.Where(id => !c.Mappings.Any(m => m.Kind == "assignee" && m.GitHubValue == id)), ct)
+            : new Dictionary<string, GitHubAssigneeProfile>();
         foreach (var id in content.Assignees)
         {
             var mapping = c.Mappings.SingleOrDefault(m => m.Kind == "assignee" && m.GitHubValue == id);
             var email = mapping is not null && Guid.TryParse(mapping.KanbadaValue, out var user)
                 ? await db.Members.Where(m => m.WorkspaceId == c.WorkspaceId && m.UserId == user).Select(m => m.Email).SingleOrDefaultAsync(ct) : null;
+            if (mapping is null && profiles.TryGetValue(id, out var profile))
+                email = await SynchronizationMembers.FindOrAdd(db, c.WorkspaceId, profile.Email, profile.Name, ct);
             if (email is null) unmapped++; else emails.Add(email);
         }
         var existing = await db.CardAssignees.Where(a => a.WorkspaceId == card.WorkspaceId && a.CardId == card.Id).ToListAsync(ct);
@@ -314,6 +319,8 @@ public sealed class GitHubSyncEngine(KanbadaDbContext db, NpgsqlDataSource sourc
         db.RemoveRange(removed);
         foreach (var email in added)
             db.Add(new CardAssigneeEntity { WorkspaceId = card.WorkspaceId, CardId = card.Id, MemberEmail = email, Position = existing.Count + added.IndexOf(email) });
-        return (removed.Count + added.Count > 0, unmapped == 0 ? null : $"{unmapped} GitHub assignees have no mapped workspace member. Only mapped members were assigned.");
+        return (removed.Count + added.Count > 0, unmapped == 0 ? null : c.ImportMissingAssignees
+            ? $"{unmapped} GitHub assignees need a valid visible email and display name, or a valid manual mapping. Those assignees were skipped."
+            : $"{unmapped} GitHub assignees have no mapped workspace member. Only mapped members were assigned.");
     }
 }

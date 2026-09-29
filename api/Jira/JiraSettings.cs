@@ -73,6 +73,7 @@ public sealed class JiraSettings(KanbadaDbContext db, WorkspaceResolver resolver
             c.TimeZone,
             c.Enabled,
             c.SyncAssignees,
+            c.ImportMissingAssignees,
             c.NextRunAt,
             c.RequestedAt,
             c.LastStartedAt,
@@ -127,6 +128,7 @@ public sealed class JiraSettings(KanbadaDbContext db, WorkspaceResolver resolver
         c.TimeZone = input.TimeZone;
         c.Enabled = input.Enabled;
         c.SyncAssignees = input.SyncAssignees;
+        c.ImportMissingAssignees = input.ImportMissingAssignees;
         c.NextRunAt = JiraSchedule.Next(c.Cron, c.TimeZone, DateTimeOffset.UtcNow);
         foreach (var old in c.Mappings.ToList())
         {

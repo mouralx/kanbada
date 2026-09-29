@@ -20,6 +20,7 @@ export type JiraInput = {
   timeZone: string;
   enabled: boolean;
   syncAssignees?: boolean;
+  importMissingAssignees?: boolean;
   mappings: JiraMapping[];
 };
 export type JiraConnection = Omit<JiraInput, 'token'> & {

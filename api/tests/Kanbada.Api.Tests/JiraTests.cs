@@ -117,6 +117,76 @@ public sealed class JiraTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     [Theory]
+    [InlineData(false, true, "jira-to-kanbada")]
+    [InlineData(true, false, "jira-to-kanbada")]
+    [InlineData(true, true, "kanbada-to-jira")]
+    public async Task MissingMemberImportRequiresBothFlagsAndAnInboundDirection(bool import, bool sync, string direction)
+    {
+        var (scope, db, c, remote, engine) = await Setup(direction: direction);
+        using (scope)
+        {
+            c.ImportMissingAssignees = import;
+            c.SyncAssignees = sync;
+            await db.SaveChangesAsync();
+            remote.Add("101", "Assigned remotely");
+            remote.Issues["101"]["fields"]!["assignee"] = new JsonObject
+            {
+                ["key"] = "new-user", ["displayName"] = "New Jira Person", ["emailAddress"] = "new@example.test"
+            };
+            await Run(db, c, engine);
+            Assert.Single(await db.Members.Where(m => m.WorkspaceId == c.WorkspaceId).ToListAsync());
+            Assert.Empty(await db.CardAssignees.Where(a => a.WorkspaceId == c.WorkspaceId).ToListAsync());
+            if (sync && direction == "jira-to-kanbada")
+                Assert.Contains("no mapped workspace member", (await db.Set<JiraLinkEntity>().SingleAsync(l => l.ConnectionId == c.Id)).LastError);
+        }
+    }
+
+    [Theory]
+    [InlineData("data-center")]
+    [InlineData("cloud")]
+    public async Task MissingJiraAssigneesCanBeImportedWithoutAccounts(string edition)
+    {
+        var (scope, db, c, remote, engine) = await Setup(edition, "jira-to-kanbada");
+        using (scope)
+        {
+            var users = await db.Users.CountAsync();
+            c.SyncAssignees = true;
+            c.ImportMissingAssignees = true;
+            await db.SaveChangesAsync();
+            remote.Add("101", "Assigned remotely");
+            remote.Add("102", "Same user");
+            foreach (var id in new[] { "101", "102" })
+                remote.Issues[id]["fields"]!["assignee"] = new JsonObject
+                {
+                    ["accountId"] = "new-user", ["key"] = "new-user", ["displayName"] = "New Jira Person", ["emailAddress"] = " NEW@example.test "
+                };
+            await Run(db, c, engine);
+            var imported = await db.Members.SingleAsync(m => m.WorkspaceId == c.WorkspaceId && m.Email == "new@example.test");
+            Assert.Null(imported.UserId);
+            Assert.NotNull(imported.InviteToken);
+            Assert.Equal("New Jira Person", imported.Name);
+            Assert.Equal(users, await db.Users.CountAsync());
+            Assert.Equal(2, await db.CardAssignees.CountAsync(a => a.WorkspaceId == c.WorkspaceId && a.MemberEmail == imported.Email));
+            Assert.Empty(await db.Notifications.Where(n => n.WorkspaceId == c.WorkspaceId).ToListAsync());
+            var version = await db.Workspaces.Where(w => w.Id == c.WorkspaceId).Select(w => w.Version).SingleAsync();
+            await Run(db, c, engine);
+            Assert.Equal(version, await db.Workspaces.Where(w => w.Id == c.WorkspaceId).Select(w => w.Version).SingleAsync());
+            remote.Issues["101"]["fields"]!["assignee"]!["emailAddress"] = null;
+            await Run(db, c, engine);
+            Assert.Contains("visible email", (await db.Set<JiraLinkEntity>().SingleAsync(l => l.ConnectionId == c.Id && l.JiraIssueId == "101")).LastError);
+            Assert.Single(await db.CardAssignees.Where(a => a.WorkspaceId == c.WorkspaceId).ToListAsync());
+            var owner = await db.Workspaces.Where(w => w.Id == c.WorkspaceId).Select(w => w.OwnerId).SingleAsync();
+            db.Add(new JiraMappingEntity { ConnectionId = c.Id, Kind = "assignee", JiraValue = "new-user", KanbadaValue = owner.ToString() });
+            await db.SaveChangesAsync();
+            await Run(db, c, engine);
+            var ownerEmail = await db.Members.Where(m => m.WorkspaceId == c.WorkspaceId && m.UserId == owner).Select(m => m.Email).SingleAsync();
+            Assert.All(await db.CardAssignees.Where(a => a.WorkspaceId == c.WorkspaceId).ToListAsync(), a => Assert.Equal(ownerEmail, a.MemberEmail));
+            Assert.Equal(2, await db.Members.CountAsync(m => m.WorkspaceId == c.WorkspaceId));
+            Assert.Equal(0, remote.Writes);
+        }
+    }
+
+    [Theory]
     [InlineData("data-center")]
     [InlineData("cloud")]
     public async Task ImportsReuseLabelsAndDoNotRepeatCaseOnlyChanges(string edition)

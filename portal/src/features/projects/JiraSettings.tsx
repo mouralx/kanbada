@@ -46,6 +46,7 @@ export function JiraSettings({
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     enabled: false,
     syncAssignees: false,
+    importMissingAssignees: false,
     mappings: [],
   });
   const [saved, setSaved] = useState<JiraConnection | null>(null);
@@ -371,9 +372,23 @@ export function JiraSettings({
           />
           {t('Synchronize assignees from Jira')}
         </label>
+        <label className="jira-assignee-toggle">
+          <input
+            type="checkbox"
+            disabled={!input.syncAssignees}
+            checked={input.importMissingAssignees ?? false}
+            onChange={(event) => change('importMissingAssignees', event.target.checked)}
+          />
+          {t('Add missing assignees as unregistered members')}
+        </label>
         <p className="jira-hint">
           {t(
-            'Jira assignees replace the card members. Unassigned or unmapped Jira users leave the card unassigned; missing mappings produce a warning. Jira assignees are never changed.',
+            'When this option and inbound assignee synchronization are enabled, match unmapped users by email or add their display name and email as an unregistered member. No accounts or access are granted; share an invitation to let them join. Manual mappings take precedence. Hidden or invalid emails are skipped with a warning.',
+          )}
+        </p>
+        <p className="jira-hint">
+          {t(
+            'Jira assignees replace the card members. Unassigned issues clear the card members. Users without a valid mapping or email match/import leave the card unassigned with a warning. Jira assignees are never changed.',
           )}
         </p>
         {input.direction === 'kanbada-to-jira' && (

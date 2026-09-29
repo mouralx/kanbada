@@ -96,7 +96,9 @@ try {
     .getByLabel('Additional Jira status for Backlog (1)', { exact: true })
     .selectOption('11');
   await dialog.getByLabel('Default Jira status for Backlog (2)', { exact: true }).check();
+  await expect(dialog.getByLabel('Add missing assignees as unregistered members')).toBeDisabled();
   await dialog.getByLabel('Synchronize assignees from Jira', { exact: true }).check();
+  await dialog.getByLabel('Add missing assignees as unregistered members').check();
   await dialog.getByRole('button', { name: 'Add assignee mapping', exact: true }).click();
   await dialog
     .getByLabel('Jira user (1)', { exact: true })
@@ -122,6 +124,7 @@ try {
   assert.equal(connection.hasToken, true);
   assert.equal(connection.enabled, false);
   assert.equal(connection.syncAssignees, true);
+  assert.equal(connection.importMissingAssignees, true);
   assert.deepEqual(
     connection.mappings
       .filter((m) => m.kind === 'status')

@@ -20,6 +20,7 @@ export type GitHubInput = {
   dueFieldId: string;
   syncLabels: boolean;
   syncAssignees: boolean;
+  importMissingAssignees?: boolean;
   cron: string;
   timeZone: string;
   enabled: boolean;

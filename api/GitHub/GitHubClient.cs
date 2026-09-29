@@ -93,6 +93,23 @@ public sealed class GitHubClient(HttpClient http, GitHubSecrets secrets, GitHubD
         return new GitHubOption(Text(Object(data["user"]), "id"), Text(Object(data["user"]), "login"));
     }
 
+    public async Task<Dictionary<string, GitHubAssigneeProfile>> AssigneeProfiles(GitHubConnectionEntity c, IEnumerable<string> ids, CancellationToken ct)
+    {
+        var profiles = new Dictionary<string, GitHubAssigneeProfile>();
+        foreach (var batch in ids.Distinct().Chunk(100))
+        {
+            var data = await Send(c, "query($ids:[ID!]!) { nodes(ids:$ids) { __typename ... on User { id login name email } } }", new { ids = batch }, ct);
+            if (data["nodes"] is not JsonArray nodes) throw new GitHubSyncException("GitHub omitted the assignee profiles.");
+            foreach (var node in nodes.OfType<JsonObject>().Where(n => n["__typename"]?.GetValue<string>() == "User"))
+            {
+                var name = node["name"]?.GetValue<string>();
+                profiles[Text(node, "id")] = new GitHubAssigneeProfile(node["email"]?.GetValue<string>(),
+                    string.IsNullOrWhiteSpace(name) ? Text(node, "login") : name);
+            }
+        }
+        return profiles;
+    }
+
     public async IAsyncEnumerable<GitHubItem> Items(GitHubConnectionEntity c, [EnumeratorCancellation] CancellationToken ct)
     {
         string? cursor = null;

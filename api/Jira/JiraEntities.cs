@@ -17,6 +17,7 @@ public sealed class JiraConnectionEntity
     public string TimeZone { get; set; } = "UTC";
     public bool Enabled { get; set; }
     public bool SyncAssignees { get; set; }
+    public bool ImportMissingAssignees { get; set; }
     public long Version { get; set; } = 1;
     public DateTimeOffset NextRunAt { get; set; }
     public DateTimeOffset? RequestedAt { get; set; }

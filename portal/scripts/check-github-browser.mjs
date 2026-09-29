@@ -143,7 +143,9 @@ try {
   for (const value of ['Low', 'Medium', 'High'])
     await dialog.getByLabel(`Kanbada priority for ${value}`, { exact: true }).selectOption(value);
   await dialog.getByLabel('GitHub due-date field (optional)').selectOption('DUE');
+  await expect(dialog.getByLabel('Add missing assignees as unregistered members')).toBeDisabled();
   await dialog.getByLabel('Map GitHub assignees to workspace members').check();
+  await dialog.getByLabel('Add missing assignees as unregistered members').check();
   await dialog.getByLabel('Find GitHub user by login').fill('octocat');
   await dialog.getByRole('button', { name: 'Find user', exact: true }).click();
   await dialog.getByLabel('Workspace member for octocat', { exact: true }).selectOption(owner.id);
@@ -154,6 +156,7 @@ try {
   await expect(dialog.getByLabel('GitHub access token')).toHaveValue('');
   assert.equal(saves.length, 1);
   assert.equal(saves[0].direction, 'bidirectional');
+  assert.equal(saves[0].importMissingAssignees, true);
   assert.equal(saves[0].priorityFieldId, 'PRIORITY');
   assert.equal(saves[0].dueFieldId, 'DUE');
   assert.ok(
