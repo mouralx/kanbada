@@ -135,6 +135,23 @@ public sealed class BrandingTests(ApiFixture fixture) : IClassFixture<ApiFixture
     }
 
     [Fact]
+    public async Task FirstRegisteredAccountIsPlatformAdministrator()
+    {
+        using var client = fixture.Client();
+        await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            email = "first-admin-" + Guid.NewGuid() + "@example.test",
+            name = "First Admin",
+            password = Password
+        });
+
+        using var scope = fixture.Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<KanbadaDbContext>();
+        var first = await db.Users.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id).Select(u => u.Id).FirstAsync();
+        Assert.True(scope.ServiceProvider.GetRequiredService<PlatformAdmins>().Contains(first));
+    }
+
+    [Fact]
     public async Task BootstrapRejectsFutureAccounts()
     {
         using var client = fixture.Client();

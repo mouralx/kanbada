@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Kanbada.Api;
 
-public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces)
+public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces, PlatformAdmins admins)
 {
     public static string Token() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
     public static string Hash(string token) => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
@@ -38,6 +38,7 @@ public sealed class Auth(KanbadaDbContext db, WorkspaceStore workspaces)
             await db.SaveChangesAsync();
             await workspaces.Create(id, "My Workspace", true);
             await tx.CommitAsync();
+            await admins.IncludeFirstUser(id, db);
             return id;
         }
         catch (DbUpdateException e) when (e.InnerException is Npgsql.PostgresException { SqlState: "23505" })

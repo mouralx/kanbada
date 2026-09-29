@@ -40,19 +40,34 @@ public sealed record BrandingInput(long Version, string Name, string? Logo, stri
 public sealed class PlatformAdmins
 {
     private HashSet<Guid> ids = [];
+    private readonly object gate = new();
 
     public async Task Initialize(IConfiguration configuration, KanbadaDbContext db)
     {
         var emails = (configuration["Platform:AdminEmails"] ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(e => e.ToLowerInvariant()).Distinct().ToArray();
         var users = await db.Users.AsNoTracking().Where(u => emails.Contains(u.Email)).Select(u => new { u.Id, u.Email }).ToListAsync();
-        // Resolve existing identities at startup, never grant privileges to future signups.
         if (emails.Any(email => users.Count(u => u.Email == email) != 1))
             throw new InvalidOperationException("Each Platform:AdminEmails entry must match exactly one existing account. Register accounts before configuring platform administrators.");
-        ids = users.Select(u => u.Id).ToHashSet();
+        var firstUser = await db.Users.AsNoTracking().OrderBy(u => u.CreatedAt).ThenBy(u => u.Id).Select(u => (Guid?)u.Id).FirstOrDefaultAsync();
+        lock (gate)
+        {
+            ids = users.Select(u => u.Id).ToHashSet();
+            if (firstUser is Guid first) ids.Add(first);
+        }
     }
 
-    public bool Contains(Guid user) => ids.Contains(user);
+    public async Task IncludeFirstUser(Guid user, KanbadaDbContext db)
+    {
+        var firstUser = await db.Users.AsNoTracking().OrderBy(u => u.CreatedAt).ThenBy(u => u.Id).Select(u => (Guid?)u.Id).FirstOrDefaultAsync();
+        if (firstUser == user)
+            lock (gate) ids.Add(user);
+    }
+
+    public bool Contains(Guid user)
+    {
+        lock (gate) return ids.Contains(user);
+    }
     public void Require(Guid user)
     {
         if (!Contains(user)) throw new ApiError(403, "Only a platform administrator can change platform branding.");

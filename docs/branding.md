@@ -23,12 +23,15 @@ podman compose up --force-recreate -d api
 ```
 
 Outside Compose, use `Platform__AdminEmails` or the `Platform:AdminEmails`
-configuration key. No administrator is assigned automatically. Workspace owners
-cannot manage platform branding unless separately configured as platform admins.
+configuration key to add administrators. The first account registered on the
+platform is assigned automatically. Workspace owners cannot manage platform
+branding unless they are the first account or are separately configured as
+platform admins.
 
 At startup the API resolves each email to exactly one **existing account ID**.
-Missing or ambiguous accounts cause startup to fail explicitly. This prevents a
-future signup from claiming administrator access by registering a configured email.
+Missing or ambiguous configured accounts cause startup to fail explicitly. This
+prevents a future signup from claiming administrator access by registering a
+configured email.
 Operators must verify that the existing account belongs to the intended person;
 email registration alone is not proof of email ownership. Administrator identities
 are not exposed in the public branding response. Removal from configuration takes
